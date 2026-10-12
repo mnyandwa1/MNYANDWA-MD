@@ -64,7 +64,7 @@ const DEFAULT_SETTINGS = {
     NEWSLETTER_JID: "120363426409647211@newsletter",
     GC_JID: "GuS93JhyfyE56LOV3ZJTFZ",
     NEWSLETTER_URL: "https://whatsapp.com/channel/00tOj5LDuj7Q1p",
-    BOT_REPO: "mnyandwa/mnyandwa",
+    BOT_REPO: "mnyandwa1/mnyandwa",
     PACK_NAME: "𝐌𝐍𝐘𝐀𝐍𝐃𝐖𝐀-𝐌𝐃",
     PACK_AUTHOR: "𝐊𝐄𝐕𝐎 𝐓𝐄𝐂𝐇",
     SUDO_NUMBERS: "",
