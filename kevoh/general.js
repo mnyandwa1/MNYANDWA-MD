@@ -5,7 +5,7 @@ const {
   commands,
   monospace,
   formatBytes,
-} = require("../gift");
+} = require("../kevo");
 
 const fs = require("fs");
 const axios = require("axios");
