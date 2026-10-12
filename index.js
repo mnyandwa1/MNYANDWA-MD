@@ -13,7 +13,7 @@
 ============================================================================ */
 
 require("events").EventEmitter.defaultMaxListeners = 960;
-require("./luka/gmdHelpers");
+require("./kevo/gmdHelpers");
 
 
 /* ============================================================================
@@ -215,7 +215,7 @@ let store;
 
 logger.level = "silent";
 
-app.use(express.static("luka"));
+app.use(express.static("kevo"));
 
 app.get("/", (req, res) =>
     res.sendFile(__dirname + "/kevo/gifted.html")
