@@ -5,7 +5,7 @@ const {
   setGroupSetting,
   resetAllGroupSettings,
   getAllGroupSettings,
-} = require("../gift/database/groupSettings");
+} = require("../kevo/database/groupSettings");
 const { clearAllSudo, getSudoNumbers } = require("../kevo/database/sudo");
 const {
   getAllUsersNotes,
