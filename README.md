@@ -11,13 +11,13 @@
 🍴 Fork Repository
 
 <p align="center">
-  <a href="https://github.com/YOUR_USERNAME/MNYANDWA-MD/fork">
+  <a href="https://github.com/mnyandwa1/MNYANDWA-MD/fork">
     <img src="https://img.shields.io/badge/FORK%20REPO-black?style=for-the-badge&logo=github" />
   </a>
 </p>🔐 Pair Code
 
 <p align="center">
-  <a href="YOUR_PAIR_CODE_URL">
+  <a href="https://mayrapair.onrender.com/pair">
     <img src="https://img.shields.io/badge/PAIR%20CODE-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" />
   </a>
 </p>🚀 Deploy to Heroku
