@@ -18,9 +18,9 @@ restartPolicyMaxRetries = 5
 #    Railway auto-sets DATABASE_URL in your service via variable reference.
 # 3. In your service Variables tab, add:
 #
-#    SESSION_ID   = <your Gifted~ session id>
+#    SESSION_ID   = <your kelvin~ session id>
 #    MODE         = public
-#    TIME_ZONE    = Africa/Nairobi
+#    TIME_ZONE    = Africa/dodoma
 #    AUTO_LIKE_STATUS = true
 #    AUTO_READ_STATUS = true
 #
