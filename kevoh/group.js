@@ -1,5 +1,5 @@
-const { gmd, getGroupMetadata, getLidMapping } = require("../gift");
-const { getGroupSetting, setGroupSetting } = require("../gift/database/groupSettings");
+const { gmd, getGroupMetadata, getLidMapping } = require("../kevo");
+const { getGroupSetting, setGroupSetting } = require("../kevo/database/groupSettings");
 
 gmd(
   {
@@ -362,7 +362,7 @@ gmd(
       groupSuperAdmins,
       groupMetadata,
     } = conText;
-    const { getLidMapping } = require("../gift/connection/groupCache");
+    const { getLidMapping } = require("../kevo/connection/groupCache");
 
     if (!isGroup) return reply("❌ This command only works in groups!");
     if (!isBotAdmin) return reply("❌ Bot is not an admin in this group!");
@@ -412,7 +412,7 @@ gmd(
     if (!targetJid || targetJid.includes("@lid")) {
       await react("❌");
       return reply(
-        "❌ Could not identify user. Please provide their number directly.\nExample: .promote 254712345678",
+        "❌ Could not identify user. Please provide their number directly.\nExample: .promote 255622629778",
       );
     }
 
@@ -655,7 +655,7 @@ gmd(
     if (!q) {
       await react("❌");
       return reply(
-        "❌ Please provide the number to add.\nExample: .add 254712345678",
+        "❌ Please provide the number to add.\nExample: .add 255622629778",
       );
     }
 
