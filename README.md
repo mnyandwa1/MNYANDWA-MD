@@ -17,7 +17,7 @@
 </p>🔐 Pair Code
 
 <p align="center">
-  <a href="https://mayrapair.onrender.com/pair">
+  <a href="https://lukapair.onrender.com/pair">
     <img src="https://img.shields.io/badge/PAIR%20CODE-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" />
   </a>
 </p>🚀 Deploy to Heroku
