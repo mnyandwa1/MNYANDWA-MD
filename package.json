@@ -1,7 +1,7 @@
 {
-  "name": "mnyandwa-md",
+  "name": "MNYANDWA-MD",
   "version": "5.0.0",
-  "description": "Mnyandwa-Md, a Multi Device Whatsapp Bot built by Gifted Tech to Enhance Whatsapp Communication Experience",
+  "description": "MNYANDWA-MD, a Multi Device Whatsapp Bot built by Gifted Tech to Enhance Whatsapp Communication Experience",
   "main": "./index.js",
   "type": "commonjs",
   "scripts": {
