@@ -1,4 +1,4 @@
-const { gmd } = require("../gift");
+const { gmd } = require("../kevo");
 const axios = require("axios");
 
 async function queryAI(endpoint, query, conText) {
@@ -123,7 +123,6 @@ gmd(
     await queryAI("geminiai", conText.q, conText);
   },
 );
-
 
 gmd(
   {
