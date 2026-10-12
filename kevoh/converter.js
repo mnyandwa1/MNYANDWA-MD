@@ -1,4 +1,4 @@
-const { gmd, toAudio, toVideo, toPtt, stickerToImage, gmdFancy, gmdRandom, getSetting, runFFmpeg, getVideoDuration, gmdSticker } = require("../gift");
+const { gmd, toAudio, toVideo, toPtt, stickerToImage, gmdFancy, gmdRandom, getSetting, runFFmpeg, getVideoDuration, gmdSticker } = require("../kevo");
 const fs = require("fs").promises;
 const { StickerTypes } = require("wa-sticker-formatter");
 
@@ -43,14 +43,14 @@ gmd({
                 if (quotedVideo) {
                     const compressedFile = gmdRandom(".webp");
                     let duration = 8; // default duration
-                    
+
                     try {
                         duration = await getVideoDuration(mediaFile);
                         if (duration > 10) duration = 10; // trim to first 10 seconds
                     } catch (e) {
                         console.error("Using default duration due to error:", e);
                     }
-                    
+
                     await runFFmpeg(mediaFile, compressedFile, 320, 15, duration);
                     await fs.unlink(mediaFile).catch(() => {});
                     mediaFile = compressedFile;
@@ -116,13 +116,13 @@ gmd({
             await react("❌");
             return reply("Please reply to/quote a sticker");
         }
-        
+
         const quotedSticker = quoted?.stickerMessage || quoted?.message?.stickerMessage;
         if (!quotedSticker) {
             await react("❌");
             return reply("That quoted message is not a sticker");
         }
-        
+
         let tempFilePath;
         try {
             tempFilePath = await Gifted.downloadAndSaveMediaMessage(quotedSticker, 'temp_media');
@@ -174,7 +174,7 @@ gmd({
     }
 
     const quotedVideo = quoted?.videoMessage || quoted?.message?.videoMessage || quoted?.pvtMessage || quoted?.message?.pvtMessage;
-    
+
     if (!quotedVideo) {
       await react("❌");
       return reply("The quoted message doesn't contain any video");
@@ -185,7 +185,7 @@ gmd({
       tempFilePath = await Gifted.downloadAndSaveMediaMessage(quotedVideo, 'temp_media');
       const buffer = await fs.readFile(tempFilePath);
       const convertedBuffer = await toAudio(buffer);
-      
+
       await Gifted.sendMessage(from, {
         audio: convertedBuffer,
         mimetype: "audio/mpeg",
@@ -199,7 +199,7 @@ gmd({
           showAdAttribution: true,
         }
       }, { quoted: mek });
-      
+
       await react("✅");
     } catch (e) {
       console.error("Error in toaudio command:", e);
@@ -233,7 +233,7 @@ gmd({
     }
 
     const quotedAudio = quoted?.audioMessage || quoted?.message?.audioMessage;
-    
+
     if (!quotedAudio) {
       await react("❌");
       return reply("The quoted message doesn't contain any audio");
@@ -244,13 +244,13 @@ gmd({
       tempFilePath = await Gifted.downloadAndSaveMediaMessage(quotedAudio, 'temp_media');
       const buffer = await fs.readFile(tempFilePath);
       const convertedBuffer = await toPtt(buffer);
-      
+
       await Gifted.sendMessage(from, {
         audio: convertedBuffer,
         mimetype: "audio/ogg; codecs=opus",
         ptt: true,
       }, { quoted: mek });
-      
+
       await react("✅");
     } catch (e) {
       console.error("Error in toptt command:", e);
@@ -279,7 +279,7 @@ gmd({
     }
 
     const quotedAudio = quoted?.audioMessage || quoted?.message?.audioMessage;
-    
+
     if (!quotedAudio) {
       await react("❌");
       return reply("The quoted message doesn't contain any audio");
@@ -290,13 +290,13 @@ gmd({
       tempFilePath = await Gifted.downloadAndSaveMediaMessage(quotedAudio, 'temp_media');
       const buffer = await fs.readFile(tempFilePath);
       const convertedBuffer = await toVideo(buffer);
-      
+
       await Gifted.sendMessage(from, {
         video: convertedBuffer,
         mimetype: "video/mp4",
         caption: 'Converted Video',
       }, { quoted: mek });
-      
+
       await react("✅");
     } catch (e) {
       console.error("Error in tovideo command:", e);
@@ -307,6 +307,3 @@ gmd({
     }
   }
 );
-
-
-
