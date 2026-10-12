@@ -23,7 +23,7 @@
 </p>🚀 Deploy to Heroku
 
 <p align="center">
-  <a href="https://heroku.com/deploy?template=https://github.com/mnyandwa1/Mnyandwa">
+  <a href="https://heroku.com/deploy?template=https://github.com/mnyandwa1/MNYANDWA-MD">
     <img src="https://www.herokucdn.com/deploy/button.svg" />
   </a>
 </p>---
