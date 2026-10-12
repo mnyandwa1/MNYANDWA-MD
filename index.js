@@ -1,7 +1,7 @@
 "use strict";
 
 /* ╔══════════════════════════════════════════════════════════════════════════╗
-   ║                         L U K A - X M D                                  ║
+   ║                         MNYANDWA-MD                                 ║
    ║                    WhatsApp Bot Engine                                   ║
    ║                                                                          ║
    ║                  Powered by Gifted Baileys                               ║
@@ -118,7 +118,7 @@ const {
 
     initializeLidStore,
 
-} = require("./luka");
+} = require("./kevo");
 
 
 /* ============================================================================
@@ -131,7 +131,7 @@ const {
     removeAntiDelete,
     startCleanup,
     SQLiteStore,
-} = require("./luka/database/messageStore");
+} = require("./kevo/database/messageStore");
 
 
 /* ============================================================================
@@ -168,7 +168,7 @@ async function resolveRealJid(Gifted, jid) {
     if (!jid.endsWith("@lid")) return jid;
 
     try {
-        const { getLidMapping } = require("./luka/connection/groupCache");
+        const { getLidMapping } = require("./kevo/connection/groupCache");
 
         const cached = getLidMapping(jid);
 
@@ -184,7 +184,7 @@ async function resolveRealJid(Gifted, jid) {
     } catch (_) {}
 
     try {
-        const { getLidMappingFromDb } = require("./luka/database/lidMapping");
+        const { getLidMappingFromDb } = require("./kevo/database/lidMapping");
 
         const fromDb = await getLidMappingFromDb(jid);
 
@@ -218,7 +218,7 @@ logger.level = "silent";
 app.use(express.static("luka"));
 
 app.get("/", (req, res) =>
-    res.sendFile(__dirname + "/luka/gifted.html")
+    res.sendFile(__dirname + "/kevo/gifted.html")
 );
 
 app.get("/health", (req, res) =>
@@ -265,13 +265,13 @@ setInterval(async () => {
 
 const sessionDir = path.join(
     __dirname,
-    "luka",
+    "kevo",
     "session"
 );
 
 const pluginsPath = path.join(
     __dirname,
-    "lukah"
+    "kevoh"
 );
 
 
@@ -467,7 +467,7 @@ async function startGifted() {
 
 
                                 const connectionMsg = `
-╭══〘〘 *${s.BOT_NAME || d.BOT_NAME}* 〙〙═⊷
+╭══ [ *${s.BOT_NAME || d.BOT_NAME}* ] ═⊷
 ┃ 🟢 Status  : *ONLINE*
 ┃ ⚡ Prefix  : *${s.PREFIX || d.PREFIX}*
 ┃ 📦 Plugins : *${totalCommands}*
