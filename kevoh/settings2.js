@@ -1,18 +1,18 @@
-const { gmd } = require("../gift/gmdCmds");
-const { getSetting, setSetting } = require("../gift/database/settings");
+const { gmd } = require("../kevo/gmdCmds");
+const { getSetting, setSetting } = require("../kevo/database/settings");
 const {
   getGroupSetting,
   setGroupSetting,
   resetAllGroupSettings,
   getAllGroupSettings,
 } = require("../gift/database/groupSettings");
-const { clearAllSudo, getSudoNumbers } = require("../gift/database/sudo");
+const { clearAllSudo, getSudoNumbers } = require("../kevo/database/sudo");
 const {
   getAllUsersNotes,
   deleteNoteById,
   updateNoteById,
   deleteAllNotes,
-} = require("../gift/database/notes");
+} = require("../kevo/database/notes");
 
 function parseBooleanInput(input) {
   if (!input) return null;
