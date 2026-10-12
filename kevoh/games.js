@@ -1,4 +1,4 @@
-const { gmd } = require("../gift");
+const { gmd } = require("../kevo");
 const {
     createGame,
     joinGame,
@@ -7,7 +7,7 @@ const {
     makeMove,
     endGame,
     initGamesDB,
-} = require("../gift/database/games");
+} = require("../kevo/database/games");
 
 const {
     createWcgGame,
@@ -19,7 +19,7 @@ const {
     eliminatePlayer,
     endWcgGame,
     initWcgDB,
-} = require("../gift/database/wcgGame");
+} = require("../kevo/database/wcgGame");
 
 const {
     createDiceGame,
@@ -29,7 +29,7 @@ const {
     playerRoll,
     endDiceGame,
     initDiceDB,
-} = require("../gift/database/diceGame");
+} = require("../kevo/database/diceGame");
 
 const { 
     clearGameTimeout, 
@@ -44,7 +44,7 @@ const {
     handleAiDiceRoll,
     gameTimeouts,
     diceTimeouts,
-} = require("../gift/gameHandler");
+} = require("../kevo/gameHandler");
 
 const {
     wcgTimeouts,
@@ -53,7 +53,7 @@ const {
     setWcgJoinTimeout,
     formatScores,
     getDiceEmoji,
-} = require("../gift/wcg");
+} = require("../kevo/wcg");
 
 
 const {
@@ -61,7 +61,7 @@ const {
     rollDice: aiRollDice,
     findBestTttMove,
     BOT_JID,
-} = require("../gift/gameAI");
+} = require("../kevo/gameAI");
 
 initGamesDB();
 initWcgDB();
