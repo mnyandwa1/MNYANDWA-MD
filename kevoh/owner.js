@@ -9,7 +9,7 @@ const {
   groupCache,
   getGroupMetadata,
   cachedGroupMetadata,
-} = require("../gift/connection/groupCache");
+} = require("../kevo/connection/groupCache");
 
 const pendingCmdFiles = new Map();
 
