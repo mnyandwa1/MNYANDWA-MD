@@ -4,7 +4,7 @@ const {
         getFileSize,
         getMimeCategory,
         getMimeFromUrl,
-    } = require("../gift"),
+    } = require("../kevo"),
     GIFTED_DLS = require("gifted-dls"),
     giftedDls = new GIFTED_DLS(),
     axios = require("axios"),
