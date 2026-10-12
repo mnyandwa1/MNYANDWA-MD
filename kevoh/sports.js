@@ -1,10 +1,10 @@
-const { gmd } = require("../gift");
+const { gmd } = require("../kevo");
 const axios = require("axios");
 const {
   generateWAMessageContent,
   generateWAMessageFromContent,
 } = require("gifted-baileys");
-const { getSetting } = require("../gift/database/settings");
+const { getSetting } = require("../kevo/database/settings");
 
 const SPORTS_API_BASE = "https://apiskeith.top";
 
