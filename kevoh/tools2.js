@@ -1,4 +1,4 @@
-const { gmd, getExtensionFromMime, isTextContent } = require("../gift");
+const { gmd, getExtensionFromMime, isTextContent } = require("../kevo");
 const axios = require("axios");
 const fs = require("fs").promises;
 const { sendButtons } = require("gifted-btns");
