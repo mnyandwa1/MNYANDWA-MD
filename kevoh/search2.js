@@ -1,4 +1,4 @@
-const { gmd } = require("../gift"),
+const { gmd } = require("../kevo"),
   axios = require("axios"),
   {
     generateWAMessageContent,
