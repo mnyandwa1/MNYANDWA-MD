@@ -8,7 +8,7 @@ const {
     deleteNote,
     deleteAllNotes,
 } = require("../kevo/database/notes");
-const { getContextInfo } = require("../gift/contextInfo");
+const { getContextInfo } = require("../kevo/contextInfo");
 const { sendButtons } = require("gifted-btns");
 
 const more = String.fromCharCode(8206);
