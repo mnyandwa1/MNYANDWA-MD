@@ -1,4 +1,4 @@
-const { gmd } = require("../gift");
+const { gmd } = require("../kevo");
 const {
     initNotesDB,
     addNote,
