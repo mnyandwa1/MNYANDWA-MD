@@ -1,4 +1,4 @@
-const { gmd } = require("../gift");
+const { gmd } = require("../kevo");
 const {
     getLidMapping,
     getGroupMetadata,
@@ -45,7 +45,7 @@ gmd(
             return reply(`❌ Please provide a phone number.
 
 *Usage:* ${botPrefix}onwa <number>
-*Example:* ${botPrefix}onwa 254712345678
+*Example:* ${botPrefix}onwa 255622629778
 
 _Include country code without + or spaces_`);
         }
@@ -57,7 +57,7 @@ _Include country code without + or spaces_`);
             return reply(`❌ Invalid phone number format.
 
 Please provide a valid number with country code.
-*Example:* .onwa 254712345678`);
+*Example:* .onwa 255622629778`);
         }
 
         await react("⏳");
