@@ -1,4 +1,4 @@
-const { gmd, commands, getSetting } = require("../gift");
+const { gmd, commands, getSetting } = require("../kevo");
 const fs = require("fs").promises;
 const fsA = require("node:fs");
 const { S_WHATSAPP_NET } = require("gifted-baileys");
@@ -9,7 +9,7 @@ const {
   groupCache,
   getGroupMetadata,
   cachedGroupMetadata,
-} = require("../gift/connection/groupCache");
+} = require("../kevo/connection/groupCache");
 
 const { exec: _shellExec } = require("child_process");
 
