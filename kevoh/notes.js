@@ -7,7 +7,7 @@ const {
     updateNote,
     deleteNote,
     deleteAllNotes,
-} = require("../gift/database/notes");
+} = require("../kevo/database/notes");
 const { getContextInfo } = require("../gift/contextInfo");
 const { sendButtons } = require("gifted-btns");
 
