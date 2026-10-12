@@ -1,4 +1,4 @@
-const { gmd, copyFolderSync } = require("../gift");
+const { gmd, copyFolderSync } = require("../kevo");
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
