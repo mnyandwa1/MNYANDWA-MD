@@ -71,8 +71,8 @@ gmd(
 
             const excludeList = [
                 ".env",
-                "gift/database/database.db",
-                "gift/session/session.db",
+                "kevo/database/database.db",
+                "kevo/session/session.db",
             ];
 
             copyFolderSync(sourcePath, destinationPath, excludeList);
