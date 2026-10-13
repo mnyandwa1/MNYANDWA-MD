@@ -1,40 +1,428 @@
 const {
-        gmd,
-        MAX_MEDIA_SIZE,
-        getFileSize,
-        getMimeCategory,
-        getMimeFromUrl,
-    } = require("../kevo"),
-    GIFTED_DLS = require("gifted-dls"),
-    giftedDls = new GIFTED_DLS(),
-    axios = require("axios"),
-    { sendButtons } = require("gifted-btns");
+    gmd,
+    MAX_MEDIA_SIZE,
+    getMimeCategory,
+    getMimeFromUrl,
+} = require("../kevo"),
+axios = require("axios"),
+{ sendButtons } = require("gifted-btns");
+
+
+const BOT_NAME = "MNYANDWA-MD";
+const OWNER = "Kelvin";
+
 
 function extractButtonId(msg) {
+
     if (!msg) return null;
+
     if (msg.templateButtonReplyMessage?.selectedId)
         return msg.templateButtonReplyMessage.selectedId;
+
     if (msg.buttonsResponseMessage?.selectedButtonId)
         return msg.buttonsResponseMessage.selectedButtonId;
+
     if (msg.listResponseMessage?.singleSelectReply?.selectedRowId)
         return msg.listResponseMessage.singleSelectReply.selectedRowId;
+
+
     if (msg.interactiveResponseMessage) {
-        const nf = msg.interactiveResponseMessage.nativeFlowResponseMessage;
-        if (nf?.paramsJson) {
-            try { const p = JSON.parse(nf.paramsJson); if (p.id) return p.id; } catch {}
+
+        const native =
+        msg.interactiveResponseMessage
+        ?.nativeFlowResponseMessage;
+
+
+        if (native?.paramsJson) {
+
+            try {
+
+                const data =
+                JSON.parse(native.paramsJson);
+
+                if (data.id)
+                    return data.id;
+
+            } catch {}
+
         }
+
+
         return msg.interactiveResponseMessage.buttonId || null;
+
     }
+
+
     return null;
+
+}
+
+
+
+async function retryRequest(url, times = 3){
+
+    for(let i = 0; i < times; i++){
+
+        try{
+
+            return await axios.get(url,{
+                timeout:60000
+            });
+
+        }catch(err){
+
+            if(i === times - 1)
+                throw err;
+
+        }
+
+    }
+
+}
+
+
+
+
+gmd(
+{
+    pattern:"spotify",
+    category:"downloader",
+    react:"🎧",
+    aliases:[
+        "spoti",
+        "spotifydl"
+    ],
+    description:"Download Spotify music"
+},
+
+
+async(from,Gifted,conText)=>{
+
+
+const {
+    q,
+    mek,
+    reply,
+    react,
+    gmdBuffer,
+    formatAudio,
+    GiftedTechApi,
+    GiftedApiKey
+
+}=conText;
+
+
+
+if(!q){
+
+await react("❌");
+
+return reply(
+
+`╭━━━〔 ${BOT_NAME} 〕━━━╮
+
+🎧 Spotify Downloader
+
+Tuma jina la wimbo au link.
+
+Mfano:
+.spotify Alan Walker Spectre
+
+
+👤 Owner: ${OWNER}
+
+╰━━━━━━━━━━━━━━╯`
+
+);
+
+}
+
+
+
+try{
+
+
+let searchAPI =
+
+`${GiftedTechApi}/api/search/spotifysearch?apikey=${GiftedApiKey}&query=${encodeURIComponent(q)}`;
+
+
+
+let response =
+await retryRequest(searchAPI);
+
+
+
+let results =
+response.data?.results;
+
+
+
+if(!results){
+
+await react("❌");
+
+return reply(
+"Wimbo haujapatikana."
+);
+
+}
+
+
+
+let tracks =
+Array.isArray(results)
+?
+results.slice(0,3)
+:
+[results];
+
+
+
+let idTime =
+Date.now();
+
+
+
+let buttons =
+tracks.map((song,index)=>({
+
+id:`song_${index}_${idTime}`,
+
+text:
+(song.title ||
+song.name ||
+"Unknown")
+.substring(0,20)
+
+}));
+
+
+
+let list =
+tracks.map((song,index)=>
+
+`${index + 1}. ${
+song.title ||
+song.name ||
+"Unknown"
+}`
+
+).join("\n");
+
+
+
+await sendButtons(
+Gifted,
+from,
+{
+
+title:`🎧 ${BOT_NAME}`,
+
+text:
+
+`*Spotify Search*
+
+${list}
+
+
+Chagua wimbo 👇`,
+
+footer:
+`Powered by ${OWNER}`,
+
+buttons
+
+}
+);
+
+
+
+
+
+const handler = async(event)=>{
+
+
+const msg =
+event.messages[0];
+
+
+if(!msg.message)
+return;
+
+
+
+const button =
+extractButtonId(msg.message);
+
+
+
+if(!button)
+return;
+
+
+
+if(!button.includes(idTime))
+return;
+
+
+
+if(msg.key.remoteJid !== from)
+return;
+
+
+
+try{
+
+
+await react("⬇️");
+
+
+
+let index =
+Number(button.split("_")[1]);
+
+
+
+let track =
+tracks[index];
+
+
+
+let url =
+
+track.url ||
+track.link ||
+track.external_urls?.spotify;
+
+
+
+if(!url){
+
+await react("❌");
+
+return reply(
+"Link haipatikani",
+msg
+);
+
+}
+
+
+
+
+let api =
+
+`${GiftedTechApi}/api/download/spotifydl?apikey=${GiftedApiKey}&url=${encodeURIComponent(url)}`;
+
+
+
+let download =
+await axios.get(api);
+
+
+
+let file =
+await gmdBuffer(
+download.data.result.download_url
+);
+
+
+
+let audio =
+await formatAudio(file);
+
+
+
+await Gifted.sendMessage(
+from,
+{
+audio,
+mimetype:"audio/mpeg"
+},
+{
+quoted:msg
+}
+);
+
+
+
+await react("✅");
+
+
+
+Gifted.ev.off(
+"messages.upsert",
+handler
+);
+
+
+
+}catch(error){
+
+
+console.log(error);
+
+
+await react("❌");
+
+
+reply(
+"Download imeshindikana.",
+msg
+);
+
+
+}
+
+
+};
+
+
+
+Gifted.ev.on(
+"messages.upsert",
+handler
+);
+
+
+
+setTimeout(()=>{
+
+
+Gifted.ev.off(
+"messages.upsert",
+handler
+);
+
+
+},300000);
+
+
+
+}catch(error){
+
+
+console.log(error);
+
+
+await react("❌");
+
+
+reply(
+"Server error jaribu tena."
+);
+
+
 }
 
 gmd(
     {
-        pattern: "spotify",
+        pattern: "ytmp3",
         category: "downloader",
-        react: "🎧",
-        aliases: ["spotifydl", "spotidl", "spoti"],
-        description: "Download Spotify tracks by URL or song name",
+        react: "🎵",
+        aliases: ["ytaudio", "ytmusic"],
+        description: "Download YouTube audio",
     },
     async (from, Gifted, conText) => {
         const {
@@ -43,8 +431,6 @@ gmd(
             reply,
             react,
             botName,
-            botFooter,
-            newsletterJid,
             gmdBuffer,
             formatAudio,
             GiftedTechApi,
@@ -54,819 +440,1916 @@ gmd(
         if (!q) {
             await react("❌");
             return reply(
-                "Please provide a Spotify URL or song name\n\n*Examples:*\n.spotify https://open.spotify.com/track/...\n.spotify The Spectre Alan Walker",
+                `*${botName} YOUTUBE AUDIO DOWNLOADER*\n\n`
+                + "Tuma link ya YouTube\n\n"
+                + "Example:\n.ytmp3 https://youtube.com/watch?v=xxxx"
             );
         }
 
-        const truncate = (str, len) =>
-            str && str.length > len ? str.substring(0, len - 2) + ".." : str;
+        try {
+            const apiUrl =
+                `${GiftedTechApi}/api/download/ytmp3?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
 
-        const downloadAndSend = async (trackUrl, quotedMsg) => {
-            const endpoints = ["spotifydl", "spotifydlv2"];
+            const response = await axios.get(apiUrl, {
+                timeout: 60000,
+            });
 
-            const t0 = Date.now();
-            const result = await Promise.any(
-                endpoints.map(endpoint => {
-                    const apiUrl = `${GiftedTechApi}/api/download/${endpoint}?apikey=${GiftedApiKey}&url=${encodeURIComponent(trackUrl)}`;
-                    return axios.get(apiUrl, { timeout: 20000 }).then(res => {
-                        if (res.data?.success && res.data?.result?.download_url) {
-                            return res.data.result;
-                        }
-                        throw new Error(`${endpoint}: no download_url`);
-                    });
-                })
-            ).catch(() => null);
-
-            if (!result || !result.download_url) {
+            if (!response.data?.success || !response.data?.result) {
                 await react("❌");
-                return reply(
-                    "Failed to fetch track. Please try again.",
-                    quotedMsg,
-                );
+                return reply("Imeshindikana kupata audio.");
             }
 
-            const { title, thumbnail, download_url } = result;
+            const {
+                title,
+                download_url
+            } = response.data.result;
+
+            if (!download_url) {
+                await react("❌");
+                return reply("Download link haipo.");
+            }
+
+            await reply(
+                `> *${botName}*\n\n`
+                + `🎧 *Downloading:* ${title || "Unknown"}`
+            );
 
             const audioBuffer = await gmdBuffer(download_url);
-            const formattedAudio = await formatAudio(audioBuffer);
-            const fileSize = formattedAudio.length;
+            const audio = await formatAudio(audioBuffer);
 
-            if (fileSize > MAX_MEDIA_SIZE) {
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        document: formattedAudio,
-                        fileName: `${(title || "spotify_track").replace(/[^\w\s.-]/gi, "")}.mp3`,
-                        mimetype: "audio/mpeg",
-                    },
-                    { quoted: quotedMsg },
-                );
-            } else {
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        audio: formattedAudio,
-                        mimetype: "audio/mpeg",
-                    },
-                    { quoted: quotedMsg },
-                );
-            }
-
-            await react("✅");
-        };
-
-        try {
-            if (q.includes("spotify.com")) {
-                await downloadAndSend(q, mek);
-                return;
-            }
-
-            const searchUrl = `${GiftedTechApi}/api/search/spotifysearch?apikey=${GiftedApiKey}&query=${encodeURIComponent(q)}`;
-            const searchResponse = await axios.get(searchUrl, {
-                timeout: 30000,
-            });
-            const data = searchResponse.data;
-
-            if (!data?.success || !data?.results) {
-                await react("❌");
-                return reply(
-                    "Search failed. Please try with a direct Spotify URL.",
-                );
-            }
-
-            const results = data.results;
-
-            if (results?.status === false) {
-                await react("❌");
-                return reply(
-                    "Search service temporarily unavailable. Please try with a direct Spotify URL.",
-                );
-            }
-
-            let tracks = [];
-            if (Array.isArray(results)) {
-                tracks = results.slice(0, 3);
-            } else if (results?.tracks && Array.isArray(results.tracks)) {
-                tracks = results.tracks.slice(0, 3);
-            } else if (
-                typeof results === "object" &&
-                (results.url || results.link)
-            ) {
-                tracks = [results];
-            }
-
-            if (tracks.length === 0) {
-                await react("❌");
-                return reply(
-                    "No Spotify tracks found. Try a different query or provide a direct Spotify URL.",
-                );
-            }
-
-            const dateNow = Date.now();
-            const buttons = tracks.map((track, index) => {
-                const title = track.title || track.name || "Unknown Track";
-                const artist = track.artist || track.artists?.join(", ") || "";
-                const displayName = artist ? `${title} - ${artist}` : title;
-                return {
-                    id: `sp_${index}_${dateNow}`,
-                    text: truncate(displayName, 20),
-                };
-            });
-
-            const trackList = tracks
-                .map((track, i) => {
-                    const title = track.title || track.name || "Unknown";
-                    const artist =
-                        track.artist || track.artists?.join(", ") || "Unknown";
-                    return `${i + 1}. ${title} - ${artist}`;
-                })
-                .join("\n");
-
-            // Fixed: Get thumbnail from the first track
-            const thumbnailUrl = tracks[0]?.thumbnail || tracks[0]?.image || tracks[0]?.album?.images?.[0]?.url || '';
-
-            await sendButtons(Gifted, from, {
-                title: `${botName} SPOTIFY`,
-                text: `*Search Results:*\n\n${trackList}\n\n*Select a track:*`,
-                footer: botFooter,
-                image: { url: thumbnailUrl },
-                buttons: buttons,
-            });
-
-            const handleResponse = async (event) => {
-                const messageData = event.messages[0];
-                if (!messageData.message) return;
-
-                const selectedButtonId = extractButtonId(messageData.message);
-                if (!selectedButtonId) return;
-                if (!selectedButtonId.includes(`_${dateNow}`)) return;
-
-                const isFromSameChat = messageData.key?.remoteJid === from;
-                if (!isFromSameChat) return;
-
-                await react("⬇️");
-
-                try {
-                    const index = parseInt(selectedButtonId.split("_")[1]);
-                    const selectedTrack = tracks[index];
-                    const trackUrl =
-                        selectedTrack?.url ||
-                        selectedTrack?.link ||
-                        selectedTrack?.external_urls?.spotify ||
-                        selectedTrack?.spotify_url;
-
-                    if (!trackUrl) {
-                        await react("❌");
-                        return reply("Track URL not available.", messageData);
-                    }
-
-                    await downloadAndSend(trackUrl, messageData);
-                } catch (error) {
-                    console.error("Spotify download error:", error);
-                    await react("❌");
-                    await reply(
-                        "Failed to download. Please try again.",
-                        messageData,
-                    );
+            await Gifted.sendMessage(
+                from,
+                {
+                    audio: audio,
+                    mimetype: "audio/mpeg",
+                    fileName: `${title || "audio"}.mp3`,
+                },
+                {
+                    quoted: mek,
                 }
-            };
-
-            Gifted.ev.on("messages.upsert", handleResponse);
-            setTimeout(
-                () => Gifted.ev.off("messages.upsert", handleResponse),
-                300000,
             );
+
+            await react("✅");
+
         } catch (error) {
-            console.error("Spotify API error:", error);
+            console.log("YTMP3 ERROR:", error);
             await react("❌");
-            return reply("An error occurred. Please try again.");
+            reply("Error imetokea jaribu tena.");
         }
     },
 );
 
+
 gmd(
     {
-        pattern: "gdrive",
+        pattern: "ytmp4",
         category: "downloader",
-        react: "📁",
-        aliases: ["googledrive", "drive", "gdrivedl"],
-        description: "Download from Google Drive",
+        react: "🎬",
+        aliases: ["ytvideo", "youtubevideo"],
+        description: "Download YouTube video",
     },
     async (from, Gifted, conText) => {
+
         const {
             q,
             mek,
             reply,
             react,
             botName,
-            botFooter,
-            newsletterJid,
             gmdBuffer,
-            formatAudio,
             formatVideo,
+            MAX_MEDIA_SIZE,
             GiftedTechApi,
             GiftedApiKey,
         } = conText;
 
-        if (!q) {
-            await react("❌");
-            return reply("Please provide a Google Drive URL");
-        }
-
-        if (!q.includes("drive.google.com")) {
-            await react("❌");
-            return reply("Please provide a valid Google Drive URL");
-        }
-
-        try {
-            const apiUrl = `${GiftedTechApi}/api/download/gdrivedl?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-            const response = await axios.get(apiUrl, { timeout: 60000 });
-
-            if (!response.data?.success || !response.data?.result) {
-                await react("❌");
-                return reply(
-                    "Failed to fetch file. Please check the URL and ensure the file is publicly accessible.",
-                );
-            }
-
-            const { name, download_url } = response.data.result;
-
-            if (!download_url) {
-                await react("❌");
-                return reply("No download URL available.");
-            }
-
-            let mimetype = getMimeFromUrl(name || "");
-            let mimeCategory = getMimeCategory(mimetype);
-
-            try {
-                const headResponse = await axios.head(download_url, {
-                    timeout: 15000,
-                });
-                const contentType = headResponse.headers["content-type"];
-                if (contentType && !contentType.includes("text/html")) {
-                    mimetype = contentType.split(";")[0].trim();
-                    mimeCategory = getMimeCategory(mimetype);
-                }
-            } catch (headErr) {
-                if (headErr.response?.status === 404) {
-                    await react("❌");
-                    return reply(
-                        "File not found. The file may have been deleted or is not publicly accessible.",
-                    );
-                }
-            }
-
-            let fileBuffer;
-            try {
-                fileBuffer = await gmdBuffer(download_url);
-            } catch (dlErr) {
-                if (
-                    dlErr.response?.status === 404 ||
-                    dlErr.message?.includes("404")
-                ) {
-                    await react("❌");
-                    return reply(
-                        "File not found. The file may have been deleted or is not publicly accessible.",
-                    );
-                }
-                throw dlErr;
-            }
-
-            const fileSize = fileBuffer.length;
-            const sendAsDoc =
-                fileSize > MAX_MEDIA_SIZE || mimeCategory === "document";
-
-            if (mimeCategory === "audio" && !sendAsDoc) {
-                const formattedAudio = await formatAudio(fileBuffer);
-
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        audio: formattedAudio,
-                        mimetype: "audio/mpeg",
-                    },
-                    { quoted: mek },
-                );
-            } else if (mimeCategory === "video" && !sendAsDoc) {
-                const formattedVideo = await formatVideo(fileBuffer);
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        video: formattedVideo,
-                        mimetype: "video/mp4",
-                        caption: `*${name || "Google Drive File"}*`,
-                    },
-                    { quoted: mek },
-                );
-            } else if (mimeCategory === "image" && !sendAsDoc) {
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        image: fileBuffer,
-                        caption: `*${name || "Google Drive File"}*`,
-                    },
-                    { quoted: mek },
-                );
-            } else {
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        document: fileBuffer,
-                        fileName: name || "gdrive_file",
-                        mimetype: mimetype || "application/octet-stream",
-                    },
-                    { quoted: mek },
-                );
-            }
-
-            await react("✅");
-        } catch (error) {
-            console.error("Google Drive API error:", error);
-            await react("❌");
-            if (
-                error.response?.status === 404 ||
-                error.message?.includes("404")
-            ) {
-                return reply(
-                    "File not found. The file may have been deleted or is not publicly accessible.",
-                );
-            }
-            return reply("An error occurred. Please try again.");
-        }
-    },
-);
-
-gmd(
-    {
-        pattern: "mediafire",
-        category: "downloader",
-        react: "🔥",
-        aliases: ["mfire", "mediafiredl", "mfiredl"],
-        description: "Download from MediaFire",
-    },
-    async (from, Gifted, conText) => {
-        const {
-            q,
-            mek,
-            reply,
-            react,
-            botName,
-            botFooter,
-            newsletterJid,
-            gmdBuffer,
-            formatAudio,
-            GiftedTechApi,
-            GiftedApiKey,
-        } = conText;
-
-        if (!q) {
-            await react("❌");
-            return reply("Please provide a MediaFire URL");
-        }
-
-        if (!q.includes("mediafire.com")) {
-            await react("❌");
-            return reply("Please provide a valid MediaFire URL");
-        }
-
-        try {
-            const apiUrl = `${GiftedTechApi}/api/download/mediafire?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-            const response = await axios.get(apiUrl, { timeout: 60000 });
-
-            if (!response.data?.success || !response.data?.result) {
-                await react("❌");
-                return reply(
-                    "Failed to fetch file. Please check the URL and try again.",
-                );
-            }
-
-            const { fileName, fileSize, fileType, mimeType, downloadUrl } =
-                response.data.result;
-
-            if (!downloadUrl) {
-                await react("❌");
-                return reply("No download URL available.");
-            }
-
-            const mimetype = mimeType || getMimeFromUrl(downloadUrl);
-            const mimeCategory = getMimeCategory(mimetype);
-
-            const sizeMatch = fileSize?.match(/([\d.]+)\s*(KB|MB|GB)/i);
-            let sizeBytes = 0;
-            if (sizeMatch) {
-                const size = parseFloat(sizeMatch[1]);
-                const unit = sizeMatch[2].toUpperCase();
-                if (unit === "KB") sizeBytes = size * 1024;
-                else if (unit === "MB") sizeBytes = size * 1024 * 1024;
-                else if (unit === "GB") sizeBytes = size * 1024 * 1024 * 1024;
-            }
-
-            const sendAsDoc =
-                sizeBytes > MAX_MEDIA_SIZE || mimeCategory === "document";
-
-            const caption =
-                `*${fileName || "MediaFire File"}*\n\n` +
-                `*Size:* ${fileSize || "Unknown"}\n` +
-                `*Type:* ${fileType || "Unknown"}`;
-
-            if (mimeCategory === "audio" && !sendAsDoc) {
-                const audioBuffer = await gmdBuffer(downloadUrl);
-                const formattedAudio = await formatAudio(audioBuffer);
-
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        audio: formattedAudio,
-                        mimetype: "audio/mpeg",
-                    },
-                    { quoted: mek },
-                );
-            } else if (mimeCategory === "video" && !sendAsDoc) {
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        video: { url: downloadUrl },
-                        mimetype: mimetype,
-                        caption: caption,
-                    },
-                    { quoted: mek },
-                );
-            } else if (mimeCategory === "image" && !sendAsDoc) {
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        image: { url: downloadUrl },
-                        caption: caption,
-                    },
-                    { quoted: mek },
-                );
-            } else {
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        document: { url: downloadUrl },
-                        fileName: fileName || "mediafire_file",
-                        mimetype: mimetype,
-                        caption: caption,
-                    },
-                    { quoted: mek },
-                );
-            }
-
-            await react("✅");
-        } catch (error) {
-            console.error("MediaFire API error:", error);
-            await react("❌");
-            return reply("An error occurred. Please try again.");
-        }
-    },
-);
-
-gmd(
-    {
-        pattern: "apk",
-        category: "downloader",
-        react: "📱",
-        aliases: ["app", "apkdl", "appdownload"],
-        description: "Download Android APK files",
-    },
-    async (from, Gifted, conText) => {
-        const {
-            q,
-            mek,
-            reply,
-            react,
-            botName,
-            botFooter,
-            newsletterJid,
-            GiftedTechApi,
-            GiftedApiKey,
-        } = conText;
 
         if (!q) {
             await react("❌");
             return reply(
-                "Please provide an app name\n\n*Example:* .apk WhatsApp",
+                `*${botName} VIDEO DOWNLOADER*\n\n`
+                +"Tuma YouTube link."
             );
         }
 
+
         try {
-         //   await reply(`Searching for *${q}* APK...`);
 
-            const apiUrl = `${GiftedTechApi}/api/download/apkdl?apikey=${GiftedApiKey}&appName=${encodeURIComponent(q)}`;
-            const response = await axios.get(apiUrl, { timeout: 60000 });
+            const apiUrl =
+            `${GiftedTechApi}/api/download/ytmp4?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
 
-            if (!response.data?.success || !response.data?.result) {
+
+            const response = await axios.get(apiUrl,{
+                timeout:60000
+            });
+
+
+            if(!response.data?.success){
                 await react("❌");
-                return reply("App not found. Please try a different name.");
+                return reply("Video haijapatikana.");
             }
 
-            const { appname, appicon, developer, mimetype, download_url } =
-                response.data.result;
 
-            if (!download_url) {
-                await react("❌");
-                return reply("No download URL available for this app.");
+            const result=response.data.result;
+
+
+            const videoBuffer =
+            await gmdBuffer(result.download_url);
+
+
+            if(videoBuffer.length > MAX_MEDIA_SIZE){
+
+                await Gifted.sendMessage(
+                    from,
+                    {
+                        document:videoBuffer,
+                        fileName:
+                        `${result.title || "video"}.mp4`,
+                        mimetype:"video/mp4"
+                    },
+                    {
+                        quoted:mek
+                    }
+                );
+
+            }else{
+
+                const video =
+                await formatVideo(videoBuffer);
+
+
+                await Gifted.sendMessage(
+                    from,
+                    {
+                        video:video,
+                        mimetype:"video/mp4",
+                        caption:
+                        `*${botName}*\n\n${result.title || ""}`
+                    },
+                    {
+                        quoted:mek
+                    }
+                );
             }
 
-            const caption =
-                `*${botName} APK DOWNLOADER*\n\n` +
-                `*App:* ${appname || q}\n` +
-                `*Developer:* ${developer || "Unknown"}\n\n` +
-                `_Downloading APK..._`;
+
+            await react("✅");
+
+
+        } catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Imeshindikana kupakua video.");
+
+        }
+    },
+);
+});gmd(
+    {
+        pattern: "tiktok",
+        category: "downloader",
+        react: "🎵",
+        aliases: ["tt", "ttdl", "tiktokdl"],
+        description: "Download TikTok video",
+    },
+    async (from, Gifted, conText) => {
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            GiftedTechApi,
+            GiftedApiKey,
+        } = conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} TIKTOK DOWNLOADER*\n\n`
+                +"Tuma TikTok link."
+            );
+        }
+
+
+        try {
+
+            const api =
+            `${GiftedTechApi}/api/download/tiktok?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+
+
+            const res = await axios.get(api,{
+                timeout:60000
+            });
+
+
+            if(!res.data?.success){
+                await react("❌");
+                return reply("TikTok video haijapatikana.");
+            }
+
+
+            const data=res.data.result;
+
 
             await Gifted.sendMessage(
                 from,
                 {
-                    image: { url: appicon },
-                    caption: caption,
+                    video:{
+                        url:data.download_url
+                    },
+                    caption:
+                    `*${botName} TIKTOK*\n\n`
+                    +`${data.title || "TikTok Video"}`
                 },
-                { quoted: mek },
+                {
+                    quoted:mek
+                }
             );
 
+
+            await react("✅");
+
+
+        }catch(e){
+
+            console.log(e);
+            await react("❌");
+            reply("Error wakati wa TikTok download.");
+
+        }
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"instagram",
+        category:"downloader",
+        react:"📸",
+        aliases:["ig","igdl","insta"],
+        description:"Download Instagram media",
+    },
+    async(from,Gifted,conText)=>{
+
+        const{
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            GiftedTechApi,
+            GiftedApiKey
+        }=conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} INSTAGRAM DOWNLOADER*\n\n`
+                +"Tuma Instagram link."
+            );
+        }
+
+
+        try{
+
+            const api =
+            `${GiftedTechApi}/api/download/instagram?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+
+
+            const res =
+            await axios.get(api,{
+                timeout:60000
+            });
+
+
+            if(!res.data?.success){
+                await react("❌");
+                return reply("Instagram media haijapatikana.");
+            }
+
+
+            const result=res.data.result;
+
+
             await Gifted.sendMessage(
                 from,
                 {
-                    document: { url: download_url },
-                    fileName: `${(appname || q).replace(/[^\w\s.-]/gi, "")}.apk`,
+                    video:{
+                        url:result.download_url
+                    },
+                    caption:
+                    `*${botName} INSTAGRAM*\n\n`
+                    +"Downloaded successfully"
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Instagram download error.");
+
+        }
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"facebook",
+        category:"downloader",
+        react:"📘",
+        aliases:["fb","fbdl"],
+        description:"Download Facebook video",
+    },
+    async(from,Gifted,conText)=>{
+
+
+        const{
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            GiftedTechApi,
+            GiftedApiKey
+        }=conText;
+
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} FACEBOOK DOWNLOADER*\n\n`
+                +"Tuma Facebook video link."
+            );
+        }
+
+
+
+        try{
+
+
+            const api =
+            `${GiftedTechApi}/api/download/facebook?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+
+
+            const res =
+            await axios.get(api,{
+                timeout:60000
+            });
+
+
+
+            if(!res.data?.success){
+
+                await react("❌");
+                return reply("Facebook video haijapatikana.");
+
+            }
+
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    video:{
+                        url:res.data.result.download_url
+                    },
+                    caption:
+                    `*${botName} FACEBOOK*\n\n`
+                    +"Downloaded"
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Facebook downloader error.");
+
+        }
+
+
+    },
+);gmd(
+    {
+        pattern: "pinterest",
+        category: "downloader",
+        react: "📌",
+        aliases: ["pin", "pindl"],
+        description: "Download Pinterest images/videos",
+    },
+    async (from, Gifted, conText) => {
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            GiftedTechApi,
+            GiftedApiKey,
+        } = conText;
+
+
+        if (!q) {
+            await react("❌");
+            return reply(
+                `*${botName} PINTEREST DOWNLOADER*\n\nTuma Pinterest link`
+            );
+        }
+
+
+        try {
+
+            const api =
+            `${GiftedTechApi}/api/download/pinterest?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+
+
+            const res = await axios.get(api,{
+                timeout:60000
+            });
+
+
+            if(!res.data?.success){
+                await react("❌");
+                return reply("Pinterest file haijapatikana.");
+            }
+
+
+            const data=res.data.result;
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    image:{
+                        url:data.download_url
+                    },
+                    caption:
+                    `*${botName} PINTEREST*\n\n`
+                    +"Downloaded successfully"
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Pinterest downloader error.");
+
+        }
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"twitter",
+        category:"downloader",
+        react:"🐦",
+        aliases:["x","tw","xdl"],
+        description:"Download Twitter/X video",
+    },
+    async(from,Gifted,conText)=>{
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            GiftedTechApi,
+            GiftedApiKey
+        }=conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} X DOWNLOADER*\n\nTuma Twitter/X link`
+            );
+        }
+
+
+        try{
+
+            const api =
+            `${GiftedTechApi}/api/download/twitter?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+
+
+            const res =
+            await axios.get(api,{
+                timeout:60000
+            });
+
+
+            if(!res.data?.success){
+                await react("❌");
+                return reply("Video haijapatikana.");
+            }
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    video:{
+                        url:res.data.result.download_url
+                    },
+                    caption:
+                    `*${botName} X DOWNLOADER*\n\n`
+                    +"Downloaded"
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("X downloader error.");
+
+        }
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"soundcloud",
+        category:"downloader",
+        react:"🎶",
+        aliases:["sc","scdl"],
+        description:"Download SoundCloud music",
+    },
+    async(from,Gifted,conText)=>{
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            gmdBuffer,
+            formatAudio,
+            GiftedTechApi,
+            GiftedApiKey
+        }=conText;
+
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} SOUNDCLOUD*\n\nTuma SoundCloud link`
+            );
+        }
+
+
+
+        try{
+
+
+            const api =
+            `${GiftedTechApi}/api/download/soundcloud?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+
+
+
+            const res =
+            await axios.get(api,{
+                timeout:60000
+            });
+
+
+
+            if(!res.data?.success){
+
+                await react("❌");
+                return reply("Audio haijapatikana.");
+
+            }
+
+
+
+            const audio =
+            await gmdBuffer(res.data.result.download_url);
+
+
+            const formatted =
+            await formatAudio(audio);
+
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    audio:formatted,
+                    mimetype:"audio/mpeg"
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("SoundCloud error.");
+
+        }
+
+    },
+);gmd(
+    {
+        pattern: "github",
+        category: "downloader",
+        react: "💻",
+        aliases: ["git", "githubdl"],
+        description: "Download GitHub files",
+    },
+    async (from, Gifted, conText) => {
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            GiftedTechApi,
+            GiftedApiKey,
+        } = conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} GITHUB DOWNLOADER*\n\n`
+                +"Tuma GitHub link"
+            );
+        }
+
+
+        try{
+
+            const api =
+            `${GiftedTechApi}/api/download/github?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+
+
+            const res =
+            await axios.get(api,{
+                timeout:60000
+            });
+
+
+            if(!res.data?.success){
+
+                await react("❌");
+                return reply("GitHub file haijapatikana.");
+
+            }
+
+
+            const data=res.data.result;
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    document:{
+                        url:data.download_url
+                    },
+                    fileName:
+                    data.fileName || "github_file.zip",
                     mimetype:
-                        mimetype || "application/vnd.android.package-archive",
+                    "application/zip"
                 },
-                { quoted: mek },
-            );
-
-            await react("✅");
-        } catch (error) {
-            console.error("APK download error:", error);
-            await react("❌");
-            return reply("An error occurred. Please try again.");
-        }
-    },
-);
-
-gmd(
-    {
-        pattern: "pastebin",
-        category: "downloader",
-        react: "📋",
-        aliases: ["getpaste", "getpastebin", "pastedl", "pastebindl", "paste"],
-        description: "Fetch content from Pastebin",
-    },
-    async (from, Gifted, conText) => {
-        const {
-            q,
-            mek,
-            reply,
-            react,
-            botName,
-            botFooter,
-            GiftedTechApi,
-            GiftedApiKey,
-        } = conText;
-
-        if (!q) {
-            await react("❌");
-            return reply(
-                "Please provide a Pastebin URL\n\n*Example:* .pastebin https://pastebin.com/xxxxxx",
-            );
-        }
-
-        if (!q.includes("pastebin.com")) {
-            await react("❌");
-            return reply("Please provide a valid Pastebin URL");
-        }
-
-        try {
-            await reply("Fetching paste content...");
-
-            const apiUrl = `${GiftedTechApi}/api/download/pastebin?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-            const response = await axios.get(apiUrl, { timeout: 30000 });
-
-            if (!response.data?.success || !response.data?.result) {
-                await react("❌");
-                return reply(
-                    "Failed to fetch paste. Please check the URL and try again.",
-                );
-            }
-
-            let content = response.data.result;
-
-            content = content
-                .replace(/\\r\\n/g, "\n")
-                .replace(/\\n/g, "\n")
-                .replace(/\\t/g, "\t");
-            content = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-
-            const pasteId = q.split("/").pop().split("?")[0];
-
-            const header =
-                `*${botName} PASTEBIN VIEWER*\n` +
-                `*Paste ID:* ${pasteId}\n` +
-                `━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-            const fullMessage = header + content;
-
-            if (fullMessage.length > 65000) {
-                const textBuffer = Buffer.from(content, "utf-8");
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        document: textBuffer,
-                        fileName: `pastebin_${pasteId}.txt`,
-                        mimetype: "text/plain",
-                        caption: `*Paste ID:* ${pasteId}\n_Content too long, sent as file_`,
-                    },
-                    { quoted: mek },
-                );
-            } else {
-                await Gifted.sendMessage(
-                    from,
-                    {
-                        text: fullMessage,
-                    },
-                    { quoted: mek },
-                );
-            }
-
-            await react("✅");
-        } catch (error) {
-            console.error("Pastebin API error:", error);
-            await react("❌");
-            return reply("An error occurred. Please try again.");
-        }
-    },
-);
-
-/*
-gmd(
-    {
-        pattern: "ytv",
-        category: "downloader",
-        react: "📽",
-        description: "Download Video from Youtube",
-    },
-    async (from, Gifted, conText) => {
-        const {
-            q,
-            mek,
-            reply,
-            react,
-            sender,
-            botPic,
-            botName,
-            botFooter,
-            newsletterUrl,
-            newsletterJid,
-            gmdJson,
-            gmdBuffer,
-            formatVideo,
-            GiftedTechApi,
-            GiftedApiKey,
-        } = conText;
-
-        if (!q) {
-            await react("❌");
-            return reply("Please provide a YouTube URL");
-        }
-
-        if (
-            !q.startsWith("https://youtu.be/") &&
-            !q.startsWith("https://www.youtube.com/") &&
-            !q.startsWith("https://youtube.com/")
-        ) {
-            return reply("Please provide a valid YouTube URL!");
-        }
-
-        try {
-            const searchResponse = await gmdJson(
-                `${GiftedTechApi}/search/yts?apikey=${GiftedApiKey}&query=${encodeURIComponent(q)}`,
-            );
-            const videoInfo = searchResponse.results[0];
-            const infoMessage = {
-                image: { url: videoInfo.thumbnail || botPic },
-                caption:
-                    `> *${botName} VIDEO DOWNLOADER*\n\n` +
-                    `*Title:* ${videoInfo.title}\n` +
-                    `*Duration:* ${videoInfo.timestamp}\n` +
-                    `*Views:* ${videoInfo.views}\n` +
-                    `*Uploaded:* ${videoInfo.ago}\n` +
-                    `*Artist:* ${videoInfo.author.name}\n\n` +
-                    `*Reply With:*\n` +
-                    `1 - Download 360p\n` +
-                    `2 - Download 720p\n` +
-                    `3 - Download 1080p`,
-                contextInfo: {
-                    mentionedJid: [sender],
-                    forwardingScore: 5,
-                    isForwarded: true,
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: newsletterJid,
-                        newsletterName: botName,
-                        serverMessageId: 143,
-                    },
-                },
-            };
-            const sentMessage = await Gifted.sendMessage(from, infoMessage, {
-                quoted: mek,
-            });
-            const messageId = sentMessage.key.id;
-            const handleResponse = async (event) => {
-                const messageData = event.messages[0];
-                if (!messageData.message) return;
-
-                const isReplyToPrompt =
-                    messageData.message.extendedTextMessage?.contextInfo
-                        ?.stanzaId === messageId;
-                if (!isReplyToPrompt) return;
-
-                const userChoice =
-                    messageData.message.conversation ||
-                    messageData.message.extendedTextMessage?.text;
-
-                await react("⬇️");
-
-                try {
-                    let quality;
-                    switch (userChoice.trim()) {
-                        case "1":
-                            quality = 360;
-                            break;
-                        case "2":
-                            quality = 720;
-                            break;
-                        case "3":
-                            quality = 1080;
-                            break;
-                        default:
-                            return reply(
-                                "Invalid option. Please reply with: 1, 2 or 3",
-                                messageData,
-                            );
-                    }
-
-                    const downloadResult = await giftedDls.ytmp4(q, quality);
-                    const downloadUrl = downloadResult.result.download_url;
-                    const videoBuffer = await gmdBuffer(downloadUrl);
-
-                    if (videoBuffer instanceof Error) {
-                        await react("❌");
-                        return reply(
-                            "Failed to download the video.",
-                            messageData,
-                        );
-                    }
-
-                    const fileSize = videoBuffer.length;
-                    const sendAsDoc = fileSize > MAX_MEDIA_SIZE;
-
-                    if (sendAsDoc) {
-                        await Gifted.sendMessage(
-                            from,
-                            {
-                                document: videoBuffer,
-                                fileName: `${videoInfo.title.replace(/[^\w\s.-]/gi, "")}.mp4`,
-                                mimetype: "video/mp4",
-                            },
-                            { quoted: messageData },
-                        );
-                    } else {
-                        const formattedVideo = await formatVideo(videoBuffer);
-                        await Gifted.sendMessage(
-                            from,
-                            {
-                                video: formattedVideo,
-                                mimetype: "video/mp4",
-                            },
-                            { quoted: messageData },
-                        );
-                    }
-
-                    await react("✅");
-                    Gifted.ev.off("messages.upsert", handleResponse);
-                } catch (error) {
-                    console.error("Error processing video:", error);
-                    await react("❌");
-                    await reply(
-                        "Failed to process video. Please try again.",
-                        messageData,
-                    );
-                    Gifted.ev.off("messages.upsert", handleResponse);
+                {
+                    quoted:mek
                 }
-            };
-
-            Gifted.ev.on("messages.upsert", handleResponse);
-
-            setTimeout(() => {
-                Gifted.ev.off("messages.upsert", handleResponse);
-            }, 300000);
-        } catch (error) {
-            console.error("YouTube download error:", error);
-            await react("❌");
-            return reply(
-                "An error occurred while processing your request. Please try again.",
             );
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("GitHub downloader error.");
+
         }
+
     },
 );
-*/
+
+
+
+gmd(
+    {
+        pattern:"media",
+        category:"downloader",
+        react:"📥",
+        aliases:["urlmedia","url"],
+        description:"Download direct media URL",
+    },
+    async(from,Gifted,conText)=>{
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            gmdBuffer,
+            getMimeFromUrl
+        }=conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} MEDIA DOWNLOADER*\n\n`
+                +"Tuma direct link"
+            );
+        }
+
+
+
+        try{
+
+
+            const buffer =
+            await gmdBuffer(q);
+
+
+            const mime =
+            getMimeFromUrl(q) ||
+            "application/octet-stream";
+
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    document:buffer,
+                    fileName:"downloaded_file",
+                    mimetype:mime
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Fail kupata file.");
+
+        }
+
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"apksearch",
+        category:"downloader",
+        react:"📱",
+        aliases:["apkpro","appdl"],
+        description:"Search and download APK",
+    },
+    async(from,Gifted,conText)=>{
+
+        const{
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            GiftedTechApi,
+            GiftedApiKey
+        }=conText;
+
+
+
+        if(!q){
+
+            await react("❌");
+            return reply(
+                `*${botName} APK SEARCH*\n\n`
+                +"Andika jina la app"
+            );
+
+        }
+
+
+
+        try{
+
+
+            const api =
+            `${GiftedTechApi}/api/download/apkdl?apikey=${GiftedApiKey}&appName=${encodeURIComponent(q)}`;
+
+
+
+            const res =
+            await axios.get(api,{
+                timeout:60000
+            });
+
+
+
+            if(!res.data?.success){
+
+                await react("❌");
+                return reply("App haijapatikana.");
+
+            }
+
+
+
+            const app=res.data.result;
+
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    image:{
+                        url:app.appicon
+                    },
+                    caption:
+                    `*${botName} APK DOWNLOADER*\n\n`
+                    +`📱 ${app.appname}\n`
+                    +`👨‍💻 ${app.developer || "Unknown"}`
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    document:{
+                        url:app.download_url
+                    },
+                    fileName:
+                    `${app.appname}.apk`,
+                    mimetype:
+                    "application/vnd.android.package-archive"
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("APK download error.");
+
+        }
+
+
+    },
+);gmd(
+    {
+        pattern: "ytsearch",
+        category: "downloader",
+        react: "🔎",
+        aliases: ["yts", "youtube"],
+        description: "Search YouTube videos",
+    },
+    async (from, Gifted, conText) => {
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            botFooter,
+            GiftedTechApi,
+            GiftedApiKey,
+        } = conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} YOUTUBE SEARCH*\n\n`
+                +"Andika jina la video"
+            );
+        }
+
+
+        try {
+
+            const api =
+            `${GiftedTechApi}/api/search/yts?apikey=${GiftedApiKey}&query=${encodeURIComponent(q)}`;
+
+
+            const res =
+            await axios.get(api,{
+                timeout:30000
+            });
+
+
+            if(!res.data?.success){
+                await react("❌");
+                return reply("Hakuna matokeo.");
+            }
+
+
+            const videos =
+            res.data.results.slice(0,5);
+
+
+            let text =
+            `*${botName} YOUTUBE SEARCH*\n\n`;
+
+
+            videos.forEach((v,i)=>{
+                text +=
+                `${i+1}. ${v.title}\n`;
+            });
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    image:{
+                        url:videos[0].thumbnail
+                    },
+                    caption:text+
+                    `\n\nJibu namba kuchagua video`
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            const msgId =
+            Date.now();
+
+
+            const handler = async(event)=>{
+
+                const m=event.messages[0];
+
+                if(!m.message)return;
+
+
+                const body =
+                m.message.conversation ||
+                m.message.extendedTextMessage?.text;
+
+
+                if(!body)return;
+
+
+                const num=parseInt(body);
+
+
+                if(num>=1 && num<=5){
+
+                    const video =
+                    videos[num-1];
+
+
+                    await react("⬇️");
+
+
+                    await Gifted.sendMessage(
+                        from,
+                        {
+                            text:
+                            `⏳ Downloading...\n\n${video.title}`
+                        },
+                        {
+                            quoted:m
+                        }
+                    );
+
+
+                    Gifted.ev.off(
+                        "messages.upsert",
+                        handler
+                    );
+
+                }
+
+            };
+
+
+            Gifted.ev.on(
+                "messages.upsert",
+                handler
+            );
+
+
+            setTimeout(()=>{
+                Gifted.ev.off(
+                    "messages.upsert",
+                    handler
+                );
+            },300000);
+
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("YouTube search error.");
+
+        }
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"imgdl",
+        category:"downloader",
+        react:"🖼️",
+        aliases:["image","imagedl"],
+        description:"Download image from URL",
+    },
+    async(from,Gifted,conText)=>{
+
+
+        const{
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            gmdBuffer
+        }=conText;
+
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} IMAGE DOWNLOADER*\n\n`
+                +"Tuma image URL"
+            );
+        }
+
+
+
+        try{
+
+            const image =
+            await gmdBuffer(q);
+
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    image:image,
+                    caption:
+                    `*${botName} IMAGE DOWNLOADER*`
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Image haijapakuliwa.");
+
+        }
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"gifdl",
+        category:"downloader",
+        react:"🎞️",
+        aliases:["gif"],
+        description:"Download GIF",
+    },
+    async(from,Gifted,conText)=>{
+
+        const{
+            q,
+            mek,
+            reply,
+            react,
+            botName
+        }=conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} GIF DOWNLOADER*\n\n`
+                +"Tuma GIF link"
+            );
+        }
+
+
+
+        try{
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    video:{
+                        url:q
+                    },
+                    gifPlayback:true,
+                    caption:
+                    `*${botName} GIF*`
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("GIF error.");
+
+        }
+
+
+    },
+);gmd(
+    {
+        pattern: "tiktokmp3",
+        category: "downloader",
+        react: "🎧",
+        aliases: ["ttmp3", "ttaudio"],
+        description: "Download TikTok audio",
+    },
+    async (from, Gifted, conText) => {
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            gmdBuffer,
+            formatAudio,
+            GiftedTechApi,
+            GiftedApiKey,
+        } = conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} TIKTOK MP3*\n\nTuma TikTok link`
+            );
+        }
+
+
+        try{
+
+            const api =
+            `${GiftedTechApi}/api/download/tiktokmp3?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+
+
+            const res =
+            await axios.get(api,{
+                timeout:60000
+            });
+
+
+            if(!res.data?.success){
+                await react("❌");
+                return reply("Audio haijapatikana.");
+            }
+
+
+            const buffer =
+            await gmdBuffer(res.data.result.download_url);
+
+
+            const audio =
+            await formatAudio(buffer);
+
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    audio:audio,
+                    mimetype:"audio/mpeg"
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("TikTok MP3 error.");
+
+        }
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"statusdl",
+        category:"downloader",
+        react:"📲",
+        aliases:["wastatus","status"],
+        description:"Download WhatsApp status",
+    },
+    async(from,Gifted,conText)=>{
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName
+        }=conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} STATUS DOWNLOADER*\n\n`
+                +"Tuma status media link"
+            );
+        }
+
+
+
+        try{
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    video:{
+                        url:q
+                    },
+                    caption:
+                    `*${botName} STATUS DOWNLOADER*`
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Status haijapatikana.");
+
+        }
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"convertmp3",
+        category:"downloader",
+        react:"🔄",
+        aliases:["tomp3","audio"],
+        description:"Convert video to mp3",
+    },
+    async(from,Gifted,conText)=>{
+
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            gmdBuffer,
+            formatAudio
+        }=conText;
+
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} MP3 CONVERTER*\n\n`
+                +"Tuma video link"
+            );
+        }
+
+
+
+        try{
+
+
+            const video =
+            await gmdBuffer(q);
+
+
+            const audio =
+            await formatAudio(video);
+
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    audio:audio,
+                    mimetype:"audio/mpeg"
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Converter error.");
+
+        }
+
+    },
+);gmd(
+    {
+        pattern: "telegram",
+        category: "downloader",
+        react: "✈️",
+        aliases: ["tg", "tgdl"],
+        description: "Download Telegram media",
+    },
+    async (from, Gifted, conText) => {
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            GiftedTechApi,
+            GiftedApiKey,
+        } = conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} TELEGRAM DOWNLOADER*\n\nTuma Telegram link`
+            );
+        }
+
+
+        try{
+
+            const api =
+            `${GiftedTechApi}/api/download/telegram?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+
+
+            const res =
+            await axios.get(api,{
+                timeout:60000
+            });
+
+
+            if(!res.data?.success){
+                await react("❌");
+                return reply("Telegram media haijapatikana.");
+            }
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    video:{
+                        url:res.data.result.download_url
+                    },
+                    caption:
+                    `*${botName} TELEGRAM DOWNLOADER*`
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Telegram downloader error.");
+
+        }
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"reddit",
+        category:"downloader",
+        react:"👽",
+        aliases:["reddl"],
+        description:"Download Reddit media",
+    },
+    async(from,Gifted,conText)=>{
+
+        const{
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            GiftedTechApi,
+            GiftedApiKey
+        }=conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} REDDIT DOWNLOADER*\n\nTuma Reddit link`
+            );
+        }
+
+
+        try{
+
+
+            const api =
+            `${GiftedTechApi}/api/download/reddit?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+
+
+            const res =
+            await axios.get(api,{
+                timeout:60000
+            });
+
+
+
+            if(!res.data?.success){
+
+                await react("❌");
+                return reply("Reddit file haipo.");
+
+            }
+
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    video:{
+                        url:res.data.result.download_url
+                    },
+                    caption:
+                    `*${botName} REDDIT*`
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Reddit error.");
+
+        }
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"snapchat",
+        category:"downloader",
+        react:"👻",
+        aliases:["snap","snapdl"],
+        description:"Download Snapchat videos",
+    },
+    async(from,Gifted,conText)=>{
+
+
+        const{
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            GiftedTechApi,
+            GiftedApiKey
+        }=conText;
+
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} SNAPCHAT DOWNLOADER*\n\nTuma Snapchat link`
+            );
+        }
+
+
+
+        try{
+
+
+            const api =
+            `${GiftedTechApi}/api/download/snapchat?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+
+
+
+            const res =
+            await axios.get(api,{
+                timeout:60000
+            });
+
+
+
+            if(!res.data?.success){
+                await react("❌");
+                return reply("Snapchat video haijapatikana.");
+            }
+
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    video:{
+                        url:res.data.result.download_url
+                    },
+                    caption:
+                    `*${botName} SNAPCHAT*`
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+
+            await react("✅");
+
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Snapchat downloader error.");
+
+        }
+
+    },
+);gmd(
+    {
+        pattern: "urlcheck",
+        category: "downloader",
+        react: "🔍",
+        aliases: ["checkurl", "scanurl"],
+        description: "Check media URL information",
+    },
+    async (from, Gifted, conText) => {
+
+        const {
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+        } = conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} URL SCANNER*\n\nTuma link`
+            );
+        }
+
+
+        try{
+
+            const response =
+            await axios.head(q,{
+                timeout:15000
+            });
+
+
+            const type =
+            response.headers["content-type"] || "Unknown";
+
+
+            const size =
+            response.headers["content-length"] || "Unknown";
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    text:
+                    `*${botName} URL SCANNER*\n\n`
+                    +`🔗 URL: ${q}\n`
+                    +`📁 Type: ${type}\n`
+                    +`📦 Size: ${size}`
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Link haijasomeka.");
+
+        }
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"zip",
+        category:"downloader",
+        react:"🗜️",
+        aliases:["zipdl"],
+        description:"Download zip file",
+    },
+    async(from,Gifted,conText)=>{
+
+        const{
+            q,
+            mek,
+            reply,
+            react,
+            botName
+        }=conText;
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} ZIP DOWNLOADER*\n\nTuma zip link`
+            );
+        }
+
+
+
+        try{
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    document:{
+                        url:q
+                    },
+                    fileName:"MNYANDWA.zip",
+                    mimetype:
+                    "application/zip"
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("Zip download error.");
+
+        }
+
+    },
+);
+
+
+
+gmd(
+    {
+        pattern:"apkinfo",
+        category:"downloader",
+        react:"📲",
+        aliases:["appinfo"],
+        description:"Get APK information",
+    },
+    async(from,Gifted,conText)=>{
+
+
+        const{
+            q,
+            mek,
+            reply,
+            react,
+            botName,
+            GiftedTechApi,
+            GiftedApiKey
+        }=conText;
+
+
+
+        if(!q){
+            await react("❌");
+            return reply(
+                `*${botName} APK INFO*\n\nAndika jina la app`
+            );
+        }
+
+
+
+        try{
+
+
+            const api =
+            `${GiftedTechApi}/api/search/apk?apikey=${GiftedApiKey}&query=${encodeURIComponent(q)}`;
+
+
+            const res =
+            await axios.get(api,{
+                timeout:30000
+            });
+
+
+
+            if(!res.data?.success){
+                await react("❌");
+                return reply("App haijapatikana.");
+            }
+
+
+
+            const app=res.data.result;
+
+
+
+            await Gifted.sendMessage(
+                from,
+                {
+                    text:
+                    `*${botName} APK INFO*\n\n`
+                    +`📱 Name: ${app.name || q}\n`
+                    +`👨‍💻 Developer: ${app.developer || "Unknown"}\n`
+                    +`⭐ Rating: ${app.rating || "N/A"}`
+                },
+                {
+                    quoted:mek
+                }
+            );
+
+
+            await react("✅");
+
+
+
+        }catch(error){
+
+            console.log(error);
+            await react("❌");
+            reply("APK info error.");
+
+        }
+
+
+    },
+);
