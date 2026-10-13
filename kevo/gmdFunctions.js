@@ -145,7 +145,7 @@ async function withTempFiles(inputBuffer, extension, processFn) {
   const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
   const tempInput = path.join(tempDir, `input_${uniqueId}.tmp`);
   const tempOutput = path.join(tempDir, `output_${uniqueId}.${extension}`);
-  
+
   try {
     fs.writeFileSync(tempInput, inputBuffer);
     await processFn(tempInput, tempOutput);
@@ -162,15 +162,15 @@ async function toAudio(buffer) {
   return withTempFiles(buffer, 'mp3', (input, output) => {
     return new Promise((resolve, reject) => {
       const { execFile } = require('child_process');
-      
+
       // First check if video has audio stream
       execFile(ffmpegPath, ['-i', input, '-hide_banner'], { timeout: 30000 }, (probeErr, probeOut, probeStderr) => {
         const hasAudio = probeStderr && (probeStderr.includes('Audio:') || probeStderr.includes('audio'));
-        
+
         if (!hasAudio) {
           return reject(new Error('This video has no audio track to extract'));
         }
-        
+
         execFile(ffmpegPath, [
           '-i', input,
           '-vn',
@@ -286,7 +286,7 @@ async function waitForFileToStabilize(filePath, timeout = 500000) {
           return reject(new Error("File stabilization timed out."));
         }
       } catch (err) {
-        
+
       }
     }, interval);
   });
@@ -426,15 +426,15 @@ async function loadSession() {
         let sessionId = config.SESSION_ID;
         const [headerCheck, b64Check] = sessionId.split('~');
 
-        if (headerCheck !== "LUKA" || !b64Check) {
-            throw new Error("❌ Invalid session format. Expected 'LUKA~.....'");
+        if (headerCheck !== "Gifted" || !b64Check) {
+            throw new Error("❌ Invalid session format. Expected 'Gifted~.....'");
         }
 
         if (!b64Check.startsWith('H4sI')) {
-            const serverUrl = `https://lukapair.onrender.com/pair/${b64Check}`;
+            const serverUrl = `https://session.gifted.co.ke/session/${b64Check}`;
             const res = await axios.get(serverUrl, { timeout: 15000 });
             const fetched = (res.data || '').toString().trim();
-            if (!fetched.startsWith('LUKA~H4sI')) {
+            if (!fetched.startsWith('Gifted~H4sI')) {
                 throw new Error("❌ Session server returned invalid data");
             }
             sessionId = fetched;
@@ -442,8 +442,8 @@ async function loadSession() {
 
         const [header, b64data] = sessionId.split('~');
 
-        if (header !== "LUKA" || !b64data) {
-            throw new Error("❌ Invalid session format. Expected 'LUKA~.....'");
+        if (header !== "Gifted" || !b64data) {
+            throw new Error("❌ Invalid session format. Expected 'Gifted~.....'");
         }
 
         const cleanB64 = b64data.replace('...', '');
@@ -608,11 +608,11 @@ const gmdBuffer = async (url, options = {}) => {
             responseType: 'arraybuffer',
             timeout: 2400000 // 24 mins😂
         });
-        
+
         if (!res.data || res.data.length === 0) {
             throw new Error("Empty response data");
         }
-        
+
         return res.data;
     } catch (err) {
         console.error("gmdBuffer Error:", err);
@@ -632,11 +632,11 @@ const gmdJson = async (url, options = {}) => {
             ...options,
             timeout: 2400000 // 24 mins😂
         });
-        
+
         if (!res.data) {
             throw new Error("Empty response data");
         }
-        
+
         return res.data;
     } catch (err) {
         console.error("gmdJson Error:", err);
@@ -708,10 +708,10 @@ class gmdStore {
         if (!this.messages.has(jid)) {
             this.messages.set(jid, new Map());
         }
-        
+
         const chatMessages = this.messages.get(jid);
         chatMessages.set(message.key.id, message);
-        
+
         if (chatMessages.size > this.maxMessages) {
             const firstKey = chatMessages.keys().next().value;
             chatMessages.delete(firstKey);
@@ -725,7 +725,7 @@ class gmdStore {
                 const oldestChats = Array.from(this.messages.keys()).slice(0, chatsToDelete);
                 oldestChats.forEach(jid => this.messages.delete(jid));
             }
-            
+
          //   console.log(`🧹 Store cleanup: ${this.messages.size} chats in memory`);
         } catch (error) {
             console.error('Store cleanup error:', error);
@@ -962,16 +962,16 @@ const MIME_EXTENSIONS = {
 function getExtensionFromMime(contentType) {
     const baseMime = contentType.split(';')[0].trim().toLowerCase();
     if (MIME_EXTENSIONS[baseMime]) return MIME_EXTENSIONS[baseMime];
-    
+
     for (const [mime, ext] of Object.entries(MIME_EXTENSIONS)) {
         if (baseMime.includes(mime.split('/')[1])) return ext;
     }
-    
+
     if (baseMime.startsWith('text/')) return '.txt';
     if (baseMime.startsWith('image/')) return '.bin';
     if (baseMime.startsWith('audio/')) return '.bin';
     if (baseMime.startsWith('video/')) return '.bin';
-    
+
     return '.bin';
 }
 
