@@ -16,14 +16,14 @@
 
 "use strict";
 
-const { gmd, commands } = require("../luka");
+const { gmd, commands } = require("../kevo");
 const {
     getSetting,
     setSetting,
     resetSetting
-} = require("../luka/database/settings");
+} = require("../kevo/database/settings");
 
-const { getExpiryStatus } = require("../luka/expiry");
+const { getExpiryStatus } = require("../kevo/expiry");
 const { Jimp } = require("jimp");
 const { S_WHATSAPP_NET } = require("@whiskeysockets/baileys");
 
@@ -321,7 +321,7 @@ async function buildMenuData(conText) {
             pushName || "User",
 
         botName:
-            botName || "LUKA-AI",
+            botName || "MNYANDWA-MD",
 
         botPrefix:
             botPrefix || ".",
@@ -333,7 +333,7 @@ async function buildMenuData(conText) {
             botMode || "public",
 
         botFooter:
-            botFooter || "ᴘᴏᴡᴇʀᴇᴅ ʙʏ ʟᴜᴋᴀʙʀᴀɴᴅ",
+            botFooter || "ᴘᴏᴡᴇʀᴇᴅ ʙʏ MNYANDWA",
 
         botCaption:
             botCaption || "",
@@ -373,7 +373,7 @@ async function buildMenuData(conText) {
 // ═══════════════════════════════════════════════════════════════
 
 const MENU_IMAGE_URL =
-    "https://i.imgur.com/gwSrfcK.png";
+    "https://i.imgur.com/S0vFsHt.jpeg";
 
 // ═══════════════════════════════════════════════════════════════
 // THEMES
@@ -1468,7 +1468,7 @@ Current:
 ${current || "Not set"}
 
 Example:
-.setcaption Powered by LUKA-AI`
+.setcaption Powered by MNYANDWA-MD`
             );
         }
 
@@ -1726,7 +1726,7 @@ gmd(
 
             const {
                 expiryLine
-            } = require("../guru/expiry");
+            } = require("../kevo/expiry");
 
             expiry =
                 await expiryLine();
@@ -1759,7 +1759,7 @@ gmd(
 │
 │ Theme   : ${themeName}
 │ Number  : ${themeNumber}/${THEME_KEYS.length}
-│ Bot     : ${name || "LUKA-AI"}
+│ Bot     : ${name || "MNYANDWA-MD"}
 │ Footer  : ${footer || "Default"}
 │ Caption : ${caption || "Default"}
 │ MenuPic : ${shortPic}
