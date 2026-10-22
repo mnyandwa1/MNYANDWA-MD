@@ -1,10 +1,10 @@
-const { gmd, gmdSticker } = require("../kevo"),
+const { gmd, gmdSticker } = require("../luka"),
   fs = require("fs").promises,
   fss = require("fs"),
   os = require("os"),
   path = require("path"),
+  { execSync } = require("child_process"),
   ffmpeg = require("fluent-ffmpeg"),
-  ffmpegPath = require("ffmpeg-static"),
   axios = require("axios"),
   stream = require("stream"),
   { promisify } = require("util"),
@@ -12,9 +12,19 @@ const { gmd, gmdSticker } = require("../kevo"),
   {
     generateWAMessageContent,
     generateWAMessageFromContent,
-  } = require("gifted-baileys"),
+  } = require("@whiskeysockets/baileys"),
   { sendButtons } = require("gifted-btns"),
   { StickerTypes } = require("wa-sticker-formatter");
+
+// Resolve ffmpeg binary: prefer ffmpeg-static, fall back to system ffmpeg
+let _srchFfmpegBin;
+try {
+  const sp = require("ffmpeg-static");
+  _srchFfmpegBin = (sp && fss.existsSync(sp)) ? sp : execSync("which ffmpeg").toString().trim();
+} catch (_) {
+  try { _srchFfmpegBin = execSync("which ffmpeg").toString().trim(); } catch (__) { _srchFfmpegBin = "ffmpeg"; }
+}
+ffmpeg.setFfmpegPath(_srchFfmpegBin);
 
 gmd(
   {
@@ -24,8 +34,8 @@ gmd(
     react: "🔍",
     description: "perform youtube search",
   },
-  async (from, Gifted, conText) => {
-    const { q, mek, reply, react, sender, botFooter, gmdBuffer } = conText;
+  async (from, Guru, conText) => {
+    const { q, mek, reply, react, sender, botFooter, gmdBuffer, KoyotehApi, GuruApiKey } = conText;
 
     if (!q) {
       await react("❌");
@@ -33,8 +43,8 @@ gmd(
     }
 
     try {
-      const apiUrl = `https://yts.giftedtech.co.ke/?q=${encodeURIComponent(q)}`;
-      const res = await axios.get(apiUrl, { timeout: 100000 });
+      const apiUrl = `${KoyotehApi}/api/search/youtube?apikey=${GuruApiKey}&q=${encodeURIComponent(q)}`;
+      const res = await axios.get(apiUrl, { timeout: 30000 });
       const results = res.data?.videos;
 
       if (!Array.isArray(results) || results.length === 0) return;
@@ -49,7 +59,7 @@ gmd(
               await generateWAMessageContent(
                 { image: { url: vid.thumbnail } },
                 {
-                  upload: Gifted.waUploadToServer,
+                  upload: Guru.waUploadToServer,
                 },
               )
             ).imageMessage,
@@ -101,7 +111,7 @@ gmd(
         { quoted: mek },
       );
 
-      await Gifted.relayMessage(from, message.message, {
+      await Guru.relayMessage(from, message.message, {
         messageId: message.key.id,
       });
 
@@ -122,7 +132,7 @@ gmd(
     react: "🙄",
     description: "Identify music from audio or video messages",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const {
       mek,
       q,
@@ -136,8 +146,8 @@ gmd(
       botName,
       botFooter,
       newsletterJid,
-      GiftedTechApi,
-      GiftedApiKey,
+      KoyotehApi,
+      GuruApiKey,
       getMediaBuffer,
       uploadToCatbox,
     } = conText;
@@ -176,7 +186,6 @@ gmd(
           const tmpOut = path.join(os.tmpdir(), `shazam_out_${Date.now()}.${ext}`);
           fss.writeFileSync(tmpIn, buffer);
           await new Promise((resolve, reject) => {
-            ffmpeg.setFfmpegPath(ffmpegPath);
             ffmpeg(tmpIn)
               .outputOptions(["-t", "20", "-c", "copy"])
               .on("end", resolve)
@@ -191,7 +200,7 @@ gmd(
         ({ url: fileUrl } = await uploadToCatbox(buffer, `audio.${ext}`));
       }
 
-      const apiUrl = `${GiftedTechApi}/api/search/shazam?apikey=${GiftedApiKey}&url=${encodeURIComponent(fileUrl)}`;
+      const apiUrl = `${KoyotehApi}/api/search/shazam?apikey=${GuruApiKey}&url=${encodeURIComponent(fileUrl)}`;
       const res = await axios.get(apiUrl, { timeout: 60000 });
 
       if (!res.data?.success || !res.data?.result) {
@@ -221,7 +230,7 @@ gmd(
       if (youtubeUrl)  txt += `🔴 *YouTube:* ${youtubeUrl}\n`;
       txt += `\n> *${botFooter}*`;
 
-      await Gifted.sendMessage(
+      await Guru.sendMessage(
         from,
         {
           image: { url: coverart },
@@ -260,8 +269,8 @@ gmd(
     react: "🔍",
     description: "Search Google and display first 5 results",
   },
-  async (from, Gifted, conText) => {
-    const { q, mek, reply, react, botFooter, GiftedTechApi, GiftedApiKey } =
+  async (from, Guru, conText) => {
+    const { q, mek, reply, react, botFooter, KoyotehApi, GuruApiKey } =
       conText;
 
     if (!q) {
@@ -270,7 +279,7 @@ gmd(
     }
 
     try {
-      const apiUrl = `${GiftedTechApi}/api/search/google?apikey=${GiftedApiKey}&query=${encodeURIComponent(q)}`;
+      const apiUrl = `${KoyotehApi}/api/search/google?apikey=${GuruApiKey}&query=${encodeURIComponent(q)}`;
       const res = await axios.get(apiUrl, { timeout: 60000 });
 
       if (
@@ -286,7 +295,7 @@ gmd(
       const results = res.data.results.slice(0, 5);
 
       const defaultImg =
-        "https://files.giftedtech.co.ke/image/ZAwgoogle-images-1548419288.jpg";
+        "https://res.cloudinary.com/dqxlb29uz/image/upload/v1780267810/bwm_uploads/media-1780267810008.jpg";
 
       const cards = await Promise.all(
         results.map(async (result) => ({
@@ -296,7 +305,7 @@ gmd(
             imageMessage: (
               await generateWAMessageContent(
                 { image: { url: defaultImg } },
-                { upload: Gifted.waUploadToServer },
+                { upload: Guru.waUploadToServer },
               )
             ).imageMessage,
           },
@@ -347,7 +356,7 @@ gmd(
         { quoted: mek },
       );
 
-      await Gifted.relayMessage(from, message.message, {
+      await Guru.relayMessage(from, message.message, {
         messageId: message.key.id,
       });
       await react("✅");
@@ -367,7 +376,7 @@ gmd(
     react: "🎵",
     description: "Get song lyrics with copy button",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const {
       q,
       mek,
@@ -375,8 +384,8 @@ gmd(
       react,
       botName,
       botFooter,
-      GiftedTechApi,
-      GiftedApiKey,
+      KoyotehApi,
+      GuruApiKey,
     } = conText;
 
     if (!q) {
@@ -385,7 +394,7 @@ gmd(
     }
 
     try {
-      const apiUrl = `${GiftedTechApi}/api/search/lyricsv2?apikey=${GiftedApiKey}&query=${encodeURIComponent(q)}`;
+      const apiUrl = `${KoyotehApi}/api/search/lyricsv2?apikey=${GuruApiKey}&query=${encodeURIComponent(q)}`;
       const res = await axios.get(apiUrl, { timeout: 60000 });
 
       if (!res.data?.success || !res.data?.result) {
@@ -400,7 +409,7 @@ gmd(
       txt += `🎵 *Title:* ${title || "Unknown"}\n\n`;
       txt += `${lyrics}\n\n`;
 
-      await sendButtons(Gifted, from, {
+      await sendButtons(Guru, from, {
         title: "",
         text: txt,
         footer: botFooter,
@@ -432,8 +441,8 @@ gmd(
     react: "📱",
     description: "Search HappyMod for modded APKs",
   },
-  async (from, Gifted, conText) => {
-    const { q, mek, reply, react, botFooter, GiftedTechApi, GiftedApiKey } =
+  async (from, Guru, conText) => {
+    const { q, mek, reply, react, botFooter, KoyotehApi, GuruApiKey } =
       conText;
 
     if (!q) {
@@ -442,7 +451,7 @@ gmd(
     }
 
     try {
-      const apiUrl = `${GiftedTechApi}/api/search/happymod?apikey=${GiftedApiKey}&query=${encodeURIComponent(q)}`;
+      const apiUrl = `${KoyotehApi}/api/search/happymod?apikey=${GuruApiKey}&query=${encodeURIComponent(q)}`;
       const res = await axios.get(apiUrl, { timeout: 60000 });
 
       if (!res.data?.success || !res.data?.results?.data) {
@@ -461,7 +470,7 @@ gmd(
               await generateWAMessageContent(
                 { image: { url: app.icon } },
                 {
-                  upload: Gifted.waUploadToServer,
+                  upload: Guru.waUploadToServer,
                 },
               )
             ).imageMessage,
@@ -506,7 +515,7 @@ gmd(
         { quoted: mek },
       );
 
-      await Gifted.relayMessage(from, message.message, {
+      await Guru.relayMessage(from, message.message, {
         messageId: message.key.id,
       });
       await react("✅");
@@ -526,8 +535,8 @@ gmd(
     react: "📦",
     description: "Search APK Mirror for apps",
   },
-  async (from, Gifted, conText) => {
-    const { q, mek, reply, react, botFooter, GiftedTechApi, GiftedApiKey } =
+  async (from, Guru, conText) => {
+    const { q, mek, reply, react, botFooter, KoyotehApi, GuruApiKey } =
       conText;
 
     if (!q) {
@@ -536,7 +545,7 @@ gmd(
     }
 
     try {
-      const apiUrl = `${GiftedTechApi}/api/search/apkmirror?apikey=${GiftedApiKey}&query=${encodeURIComponent(q)}`;
+      const apiUrl = `${KoyotehApi}/api/search/apkmirror?apikey=${GuruApiKey}&query=${encodeURIComponent(q)}`;
       const res = await axios.get(apiUrl, { timeout: 60000 });
 
       if (!res.data?.success || !res.data?.results?.data) {
@@ -555,7 +564,7 @@ gmd(
               await generateWAMessageContent(
                 { image: { url: app.icon } },
                 {
-                  upload: Gifted.waUploadToServer,
+                  upload: Guru.waUploadToServer,
                 },
               )
             ).imageMessage,
@@ -600,7 +609,7 @@ gmd(
         { quoted: mek },
       );
 
-      await Gifted.relayMessage(from, message.message, {
+      await Guru.relayMessage(from, message.message, {
         messageId: message.key.id,
       });
       await react("✅");
@@ -620,7 +629,7 @@ gmd(
     react: "🎨",
     description: "Search and send stickers",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const {
       q,
       mek,
@@ -628,8 +637,8 @@ gmd(
       react,
       packName,
       packAuthor,
-      GiftedTechApi,
-      GiftedApiKey,
+      KoyotehApi,
+      GuruApiKey,
     } = conText;
 
     if (!q) {
@@ -638,7 +647,7 @@ gmd(
     }
 
     try {
-      const apiUrl = `${GiftedTechApi}/api/search/stickersearch?apikey=${GiftedApiKey}&query=${encodeURIComponent(q)}`;
+      const apiUrl = `${KoyotehApi}/api/search/stickersearch?apikey=${GuruApiKey}&query=${encodeURIComponent(q)}`;
       const res = await axios.get(apiUrl, { timeout: 60000 });
 
       if (
@@ -668,7 +677,7 @@ gmd(
             quality: 75,
           });
 
-          await Gifted.sendMessage(
+          await Guru.sendMessage(
             from,
             { sticker: processedSticker },
             { quoted: mek },
@@ -687,3 +696,33 @@ gmd(
     }
   },
 );
+
+// ─── URBAN DICTIONARY ─────────────────────────────────────────────────────────
+
+gmd({
+  pattern: "urban",
+  aliases: ["ud", "slang", "urbandict"],
+  react: "📖",
+  category: "search",
+  description: "Look up any word on Urban Dictionary. Usage: .urban slay",
+}, async (from, Guru, conText) => {
+  const { reply, react, q, mek, botFooter } = conText;
+  if (!q) return reply("❌ Provide a word!\nExample: `.urban no cap`");
+  try {
+    await react("🔍");
+    const res = await axios.get(`https://api.urbandictionary.com/v0/define?term=${encodeURIComponent(q)}`, { timeout: 15000 });
+    const entry = res.data?.list?.[0];
+    if (!entry) return reply(`❌ No definition found for *"${q}"*`);
+    const def = entry.definition.replace(/\[|\]/g, "").slice(0, 600);
+    const ex  = (entry.example || "").replace(/\[|\]/g, "").slice(0, 250);
+    const up  = entry.thumbs_up || 0;
+    const dn  = entry.thumbs_down || 0;
+    await react("✅");
+    await Guru.sendMessage(from, {
+      text: `📖 *Urban Dictionary*\n\n🔤 *Word:* ${q}\n\n*Definition:*\n${def}\n${ex ? `\n*Example:*\n_${ex}_\n` : ""}\n👍 ${up}  👎 ${dn}\n\n> _${botFooter}_`,
+    }, { quoted: mek });
+  } catch {
+    await react("❌");
+    reply("❌ Failed to fetch definition. Try again.");
+  }
+});

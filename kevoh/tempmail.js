@@ -1,8 +1,9 @@
-const { gmd } = require("../kevo");
+
+const { gmd } = require("../luka");
 const axios = require("axios");
 const { sendButtons } = require("gifted-btns");
-const { getContextInfo } = require("../kevo/contextInfo");
-const { getLidMapping } = require("../kevo/connection/groupCache");
+const { getContextInfo } = require("../luka/contextInfo");
+const { getLidMapping } = require("../luka/connection/groupCache");
 const {
     initTempMailDB,
     setUserEmail,
@@ -10,7 +11,7 @@ const {
     getUserEmailWithExpiry,
     deleteUserEmail,
     EXPIRY_MINUTES,
-} = require("../kevo/database/tempmail");
+} = require("../luka/database/tempmail");
 
 initTempMailDB();
 
@@ -63,7 +64,7 @@ gmd(
         category: "tempmail",
         description: "Generate a new temporary email address",
     },
-    async (from, Gifted, conText) => {
+    async (from, Guru, conText) => {
         const {
             sender,
             mek,
@@ -71,8 +72,8 @@ gmd(
             react,
             botFooter,
             botName,
-            GiftedTechApi,
-            GiftedApiKey,
+            KoyotehApi,
+            GuruApiKey,
         } = conText;
 
         const userJid = normalizeUserJid(sender);
@@ -81,7 +82,7 @@ gmd(
         if (existingData) {
             await react("⚠️");
 
-            await Gifted.sendMessage(
+            await Guru.sendMessage(
                 from,
                 {
                     text: `⚠️ *ACTIVE EMAIL EXISTS*
@@ -100,7 +101,7 @@ Use *.delmail* first to delete it, then generate a new one.
                 { quoted: mek },
             );
 
-            await sendButtons(Gifted, from, {
+            await sendButtons(Guru, from, {
                 text: `📋 Copy your email`,
                 footer: botFooter,
                 buttons: [
@@ -120,9 +121,9 @@ Use *.delmail* first to delete it, then generate a new one.
 
         try {
             const res = await axios.get(
-                `${GiftedTechApi}/api/tempmail/generate`,
+                `${KoyotehApi}/api/tempmail/generate`,
                 {
-                    params: { apikey: GiftedApiKey },
+                    params: { apikey: GuruApiKey },
                     timeout: 30000,
                 },
             );
@@ -135,7 +136,7 @@ Use *.delmail* first to delete it, then generate a new one.
             const email = res.data.result.email;
             await setUserEmail(userJid, email);
 
-            await Gifted.sendMessage(
+            await Guru.sendMessage(
                 from,
                 {
                     text: `📧 *TEMP MAIL GENERATED*
@@ -155,7 +156,7 @@ _Copy the email below and use it for verification_`,
                 { quoted: mek },
             );
 
-            await sendButtons(Gifted, from, {
+            await sendButtons(Guru, from, {
                 text: `📋 Copy your email`,
                 footer: botFooter,
                 buttons: [
@@ -186,7 +187,7 @@ gmd(
         category: "tempmail",
         description: "Check inbox of your generated temp email",
     },
-    async (from, Gifted, conText) => {
+    async (from, Guru, conText) => {
         const {
             sender,
             mek,
@@ -194,8 +195,8 @@ gmd(
             react,
             botFooter,
             botName,
-            GiftedTechApi,
-            GiftedApiKey,
+            KoyotehApi,
+            GuruApiKey,
         } = conText;
 
         const userJid = normalizeUserJid(sender);
@@ -212,8 +213,8 @@ gmd(
         await react("⏳");
 
         try {
-            const res = await axios.get(`${GiftedTechApi}/api/tempmail/inbox`, {
-                params: { apikey: GiftedApiKey, email: email },
+            const res = await axios.get(`${KoyotehApi}/api/tempmail/inbox`, {
+                params: { apikey: GuruApiKey, email: email },
                 timeout: 30000,
             });
 
@@ -221,7 +222,7 @@ gmd(
                 if (res.data?.message?.includes("No Emails")) {
                     await react("📭");
 
-                    await Gifted.sendMessage(
+                    await Guru.sendMessage(
                         from,
                         {
                             text: `📭 *EMPTY INBOX*
@@ -237,7 +238,7 @@ _Wait a few seconds after sending an email and try again._`,
                         { quoted: mek },
                     );
 
-                    await sendButtons(Gifted, from, {
+                    await sendButtons(Guru, from, {
                         text: `📋 Copy your email`,
                         footer: botFooter,
                         buttons: [
@@ -262,7 +263,7 @@ _Wait a few seconds after sending an email and try again._`,
             if (!emails || emails.length === 0) {
                 await react("📭");
 
-                await Gifted.sendMessage(
+                await Guru.sendMessage(
                     from,
                     {
                         text: `📭 *EMPTY INBOX*
@@ -278,7 +279,7 @@ _Wait a few seconds after sending an email or try again._`,
                     { quoted: mek },
                 );
 
-                await sendButtons(Gifted, from, {
+                await sendButtons(Guru, from, {
                     text: `📋 Copy your email:`,
                     footer: botFooter,
                     buttons: [
@@ -321,7 +322,7 @@ Hey @${getUserName(sender)}, you have *${emails.length}* email(s)
 
 📖 Use *.readmail <number>* to read full email`;
 
-            await Gifted.sendMessage(
+            await Guru.sendMessage(
                 from,
                 {
                     text: inboxText,
@@ -330,7 +331,7 @@ Hey @${getUserName(sender)}, you have *${emails.length}* email(s)
                 { quoted: mek },
             );
 
-            await sendButtons(Gifted, from, {
+            await sendButtons(Guru, from, {
                 text: `📋 Copy your email`,
                 footer: botFooter,
                 buttons: [
@@ -366,7 +367,7 @@ gmd(
         category: "tempmail",
         description: "Read a specific email by number",
     },
-    async (from, Gifted, conText) => {
+    async (from, Guru, conText) => {
         const {
             sender,
             mek,
@@ -375,8 +376,8 @@ gmd(
             q,
             botFooter,
             botName,
-            GiftedTechApi,
-            GiftedApiKey,
+            KoyotehApi,
+            GuruApiKey,
         } = conText;
 
         const userJid = normalizeUserJid(sender);
@@ -402,9 +403,9 @@ gmd(
 
         try {
             const inboxRes = await axios.get(
-                `${GiftedTechApi}/api/tempmail/inbox`,
+                `${KoyotehApi}/api/tempmail/inbox`,
                 {
-                    params: { apikey: GiftedApiKey, email: email },
+                    params: { apikey: GuruApiKey, email: email },
                     timeout: 30000,
                 },
             );
@@ -478,10 +479,10 @@ gmd(
                         email,
                     );
                     const msgRes = await axios.get(
-                        `${GiftedTechApi}/api/tempmail/message`,
+                        `${KoyotehApi}/api/tempmail/message`,
                         {
                             params: {
-                                apikey: GiftedApiKey,
+                                apikey: GuruApiKey,
                                 email: email,
                                 message_id: messageId,
                             },
@@ -553,7 +554,7 @@ Hey @${getUserName(sender)}, here's your email:
 ${cleanBody}
 ━━━━━━━━━━━━━━━━━━`;
 
-            await Gifted.sendMessage(
+            await Guru.sendMessage(
                 from,
                 {
                     text: messageText,
@@ -563,7 +564,7 @@ ${cleanBody}
             );
 
             if (code) {
-                await sendButtons(Gifted, from, {
+                await sendButtons(Guru, from, {
                     text: `🔐 *Code Found* ${code}`,
                     footer: botFooter,
                     buttons: [
@@ -601,7 +602,7 @@ gmd(
         category: "tempmail",
         description: "Delete your stored temp email",
     },
-    async (from, Gifted, conText) => {
+    async (from, Guru, conText) => {
         const { sender, reply, react } = conText;
 
         const userJid = normalizeUserJid(sender);
@@ -630,7 +631,7 @@ gmd(
         category: "tempmail",
         description: "Show all tempmail commands",
     },
-    async (from, Gifted, conText) => {
+    async (from, Guru, conText) => {
         const { sender, reply } = conText;
 
         const helpText = `📧 *TEMPMAIL COMMANDS*

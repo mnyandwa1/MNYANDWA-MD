@@ -1,18 +1,19 @@
-const { gmd } = require("../kevo/gmdCmds");
-const { getSetting, setSetting } = require("../kevo/database/settings");
+
+const { gmd } = require("../luka/gmdCmds");
+const { getSetting, setSetting } = require("../luka/database/settings");
 const {
   getGroupSetting,
   setGroupSetting,
   resetAllGroupSettings,
   getAllGroupSettings,
-} = require("../kevo/database/groupSettings");
-const { clearAllSudo, getSudoNumbers } = require("../kevo/database/sudo");
+} = require("../luka/database/groupSettings");
+const { clearAllSudo, getSudoNumbers } = require("../luka/database/sudo");
 const {
   getAllUsersNotes,
   deleteNoteById,
   updateNoteById,
   deleteAllNotes,
-} = require("../kevo/database/notes");
+} = require("../luka/database/notes");
 
 function parseBooleanInput(input) {
   if (!input) return null;
@@ -48,7 +49,7 @@ gmd(
     category: "owner",
     description: "Set auto like status (on/off)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     const valid = ["true", "false"];
@@ -80,7 +81,7 @@ gmd(
     category: "owner",
     description: "Set auto read status (on/off)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     const valid = ["true", "false"];
@@ -112,7 +113,7 @@ gmd(
     category: "owner",
     description: "Set status like emojis (comma separated)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!q)
@@ -141,7 +142,7 @@ gmd(
     category: "owner",
     description: "Set status reply text",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!q) return reply("❌ Please provide reply text!");
@@ -167,7 +168,7 @@ gmd(
     category: "owner",
     description: "Set auto react mode (on/all/dm/groups/commands/off)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
 
@@ -206,7 +207,7 @@ gmd(
     category: "owner",
     description: "Set auto reply (on/off)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     const valid = ["true", "false"];
@@ -236,7 +237,7 @@ gmd(
     category: "owner",
     description: "Set auto bio (on/off)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     const valid = ["true", "false"];
@@ -267,7 +268,7 @@ gmd(
     description:
       "Set auto block country codes (comma separated or empty to disable)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     try {
@@ -301,7 +302,7 @@ gmd(
     category: "owner",
     description: "Set auto read messages mode (on/all/dm/groups/commands/off)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
 
@@ -340,7 +341,7 @@ gmd(
     category: "owner",
     description: "Set YouTube channel link",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!q) return reply("❌ Please provide a YouTube link!");
@@ -366,7 +367,7 @@ gmd(
     category: "owner",
     description: "Set newsletter JID",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!q) return reply("❌ Please provide a newsletter JID!");
@@ -392,7 +393,7 @@ gmd(
     category: "owner",
     description: "Set group chat JID/invite code",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!q) return reply("❌ Please provide a group JID or invite code!");
@@ -418,7 +419,7 @@ gmd(
     category: "owner",
     description: "Set newsletter URL",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!q) return reply("❌ Please provide a newsletter URL!");
@@ -438,24 +439,58 @@ gmd(
 
 gmd(
   {
+    pattern: "repo",
+    aliases: ["botrepo", "source", "github"],
+    react: "🔗",
+    category: "general",
+    description: "Show the bot GitHub repository link",
+  },
+  async (from, Guru, conText) => {
+    const { reply, react, botName, botFooter } = conText;
+    await react("🔗");
+    try {
+      const BOT_GITHUB = "https://github.com/Lukabrand/LUKA-AI-";
+      // Use DB only if owner explicitly changed it via .setbotrepo, otherwise hardcoded
+      let repoUrl = (await getSetting("BOT_REPO")) || BOT_GITHUB;
+      if (!repoUrl.startsWith("http")) repoUrl = `https://github.com/${repoUrl}`;
+      const botN     = botName || "LUKA-AI";
+      const footer   = botFooter ? `\n\n> *${botFooter}*` : "";
+      await reply(
+`🌟 *${botN} — Source Code*
+
+┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+📦 *Repository:*
+${repoUrl}
+┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄
+⭐ _Star the repo to support development!_
+🍴 _Fork it to deploy your own instance._${footer}`
+      );
+    } catch (error) {
+      await reply(`❌ Error: ${error.message}`);
+    }
+  },
+);
+
+gmd(
+  {
     pattern: "setbotrepo",
-    aliases: ["botrepo", "repo", "setrepo"],
+    aliases: ["setrepo"],
     react: "⚙️",
     category: "owner",
-    description: "Set bot repository",
+    description: "Set bot repository URL. Usage: .setbotrepo <url>",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
-    if (!q) return reply("❌ Please provide a repository!");
+    if (!q) return reply(`❌ Please provide a repository URL!\n\nExample:\n*.setbotrepo https://github.com/yourusername/your-repo*`);
     try {
       const current = await getSetting("BOT_REPO");
       if (current === q.trim()) {
-        return reply(`⚠️ Bot repository is already set to: *${q.trim()}*`);
+        return reply(`⚠️ Bot repository is already set to:\n${q.trim()}`);
       }
       await setSetting("BOT_REPO", q.trim());
       await react("✅");
-      await reply(`✅ Bot repository set to: *${q.trim()}*`);
+      await reply(`✅ Bot repository updated!\n\n🔗 ${q.trim()}`);
     } catch (error) {
       await reply(`❌ Error: ${error.message}`);
     }
@@ -470,7 +505,7 @@ gmd(
     category: "owner",
     description: "Set sticker pack name",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!q) return reply("❌ Please provide a pack name!");
@@ -496,7 +531,7 @@ gmd(
     category: "owner",
     description: "Set sticker pack author",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!q) return reply("❌ Please provide a pack author!");
@@ -522,7 +557,7 @@ gmd(
     category: "owner",
     description: "Get a specific setting value",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!q)
@@ -547,7 +582,7 @@ gmd(
     category: "owner",
     description: "Set any setting (key value)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!q || !q.includes(" ")) {
@@ -580,7 +615,7 @@ gmd(
     category: "owner",
     description: "Reset a setting to default",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!q) return reply("❌ Please provide a setting key to reset!");
@@ -604,7 +639,7 @@ gmd(
     category: "owner",
     description: "Reset all settings to defaults",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     try {
@@ -625,7 +660,7 @@ gmd(
     category: "owner",
     description: "Set auto reply to status (on/off)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     const valid = ["true", "false"];
@@ -657,7 +692,7 @@ gmd(
     category: "owner",
     description: "Set PM permit (on/off)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     const valid = ["true", "false"];
@@ -688,7 +723,7 @@ gmd(
     description:
       "Set group events notifications for this group (on/off) - promotes/demotes",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser, isGroup, isAdmin } = conText;
     if (!isGroup) return reply("❌ This command only works in groups!");
     if (!isSuperUser && !isAdmin) return reply("❌ Admin/Owner Only Command!");
@@ -723,7 +758,7 @@ gmd(
     category: "owner",
     description: "Remove all sudo numbers from database",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     try {
@@ -748,7 +783,7 @@ gmd(
     category: "group",
     description: "View all settings for this group",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isAdmin, isSuperAdmin, isGroup, groupName } = conText;
     if (!isGroup) return reply("❌ This command only works in groups!");
     if (!isAdmin && !isSuperAdmin) return reply("❌ Admin Only Command!");
@@ -757,7 +792,7 @@ gmd(
       const {
         getBadWords,
         DEFAULT_BAD_WORDS,
-      } = require("../gift/database/groupSettings");
+      } = require("../luka/database/groupSettings");
       const settings = await getAllGroupSettings(from);
 
       const welcomeStatus = isSettingEnabled(settings.WELCOME_MESSAGE)
@@ -876,7 +911,7 @@ gmd(
     description:
       "Reset all settings for this group (welcome, goodbye, antilink, etc.)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser, isGroup } = conText;
     if (!isGroup) return reply("❌ This command only works in groups!");
     if (!isSuperUser) return reply("❌ Owner Only Command!");
@@ -908,7 +943,7 @@ gmd(
     description:
       "Reset entire database to defaults (bot settings, sudo, group settings)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser } = conText;
     if (!isSuperUser) return reply("❌ Owner Only Command!");
 
@@ -924,7 +959,7 @@ gmd(
       const {
         GroupSettingsDB,
         AntilinkWarningsDB,
-      } = require("../gift/database/groupSettings");
+      } = require("../guru/database/groupSettings");
       await GroupSettingsDB.destroy({ where: {} });
       await AntilinkWarningsDB.destroy({ where: {} });
       await react("✅");
@@ -945,7 +980,7 @@ gmd(
     category: "owner",
     description: "View all users' notes (owner only)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser } = conText;
     if (!isSuperUser) {
       await react("❌");
@@ -1002,7 +1037,7 @@ gmd(
     category: "owner",
     description: "Delete any note by ID (owner only)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser, q } = conText;
     if (!isSuperUser) {
       await react("❌");
@@ -1037,7 +1072,7 @@ gmd(
     category: "owner",
     description: "Update any note by ID (owner only)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser, q } = conText;
     if (!isSuperUser) {
       await react("❌");
@@ -1089,7 +1124,7 @@ gmd(
     category: "owner",
     description: "Delete all notes for a specific user (owner only)",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser, q } = conText;
     if (!isSuperUser) {
       await react("❌");

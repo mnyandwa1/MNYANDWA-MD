@@ -1,8 +1,9 @@
-const { gmd } = require("../kevo");
+
+const { gmd } = require("../luka");
 const {
     getLidMapping,
     getGroupMetadata,
-} = require("../gift/connection/groupCache");
+} = require("../luka/connection/groupCache");
 
 function getUserName(jid) {
     return jid.split("@")[0];
@@ -37,7 +38,7 @@ gmd(
         category: "utility",
         description: "Check if a phone number is registered on WhatsApp",
     },
-    async (from, Gifted, conText) => {
+    async (from, Guru, conText) => {
         const { sender, mek, reply, react, q, botPrefix } = conText;
 
         if (!q || q.trim() === "") {
@@ -45,7 +46,7 @@ gmd(
             return reply(`❌ Please provide a phone number.
 
 *Usage:* ${botPrefix}onwa <number>
-*Example:* ${botPrefix}onwa 255622629778
+*Example:* ${botPrefix}onwa 254712345678
 
 _Include country code without + or spaces_`);
         }
@@ -57,13 +58,13 @@ _Include country code without + or spaces_`);
             return reply(`❌ Invalid phone number format.
 
 Please provide a valid number with country code.
-*Example:* .onwa 255622629778`);
+*Example:* .onwa 254712345678`);
         }
 
         await react("⏳");
 
         try {
-            const [result] = await Gifted.onWhatsApp(num);
+            const [result] = await Guru.onWhatsApp(num);
 
             if (result && result.exists) {
                 await react("✅");
@@ -101,13 +102,13 @@ gmd(
         description: "Export all group participants as VCF contact file",
         isGroup: true,
     },
-    async (from, Gifted, conText) => {
+    async (from, Guru, conText) => {
         const { sender, mek, reply, react } = conText;
 
         await react("⏳");
 
         try {
-            const groupMetadata = await getGroupMetadata(Gifted, from);
+            const groupMetadata = await getGroupMetadata(Guru, from);
             const participants = groupMetadata?.participants || [];
             const groupName = groupMetadata?.subject || "Group";
 
@@ -144,7 +145,7 @@ gmd(
 
             const fileName = `${groupName}.vcf`;
 
-            await Gifted.sendMessage(
+            await Guru.sendMessage(
                 from,
                 {
                     document: Buffer.from(vcfContent.trim(), "utf-8"),

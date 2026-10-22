@@ -1,7 +1,7 @@
-const { gmd, commands, getSetting } = require("../kevo");
+const { gmd, commands, getSetting } = require("../luka");
 const fs = require("fs").promises;
 const fsA = require("node:fs");
-const { S_WHATSAPP_NET } = require("gifted-baileys");
+const { S_WHATSAPP_NET } = require("@whiskeysockets/baileys");
 const { Jimp } = require("jimp");
 const path = require("path");
 const moment = require("moment-timezone");
@@ -9,7 +9,7 @@ const {
   groupCache,
   getGroupMetadata,
   cachedGroupMetadata,
-} = require("../kevo/connection/groupCache");
+} = require("../luka/connection/groupCache");
 
 const pendingCmdFiles = new Map();
 
@@ -39,7 +39,7 @@ gmd(
     category: "owner",
     description: "Get Bot Owner.",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { mek, reply, react, isSuperUser, ownerNumber, ownerName, botName } =
       conText;
 
@@ -57,7 +57,7 @@ gmd(
         `TEL;type=CELL;type=VOICE;waid=${ownerNumber}:${ownerNumber}\n` +
         "END:VCARD";
 
-      await Gifted.sendMessage(
+      await Guru.sendMessage(
         from,
         {
           contacts: {
@@ -84,7 +84,7 @@ gmd(
     category: "group",
     description: "Set group full profile picture without cropping.",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { mek, reply, react, sender, quoted, isGroup, isSuperUser, isAdmin } =
       conText;
 
@@ -105,7 +105,7 @@ gmd(
         await react("❌");
         return reply("Please quote an image");
       }
-      tempFilePath = await Gifted.downloadAndSaveMediaMessage(
+      tempFilePath = await Guru.downloadAndSaveMediaMessage(
         quotedImg,
         "temp_media",
       );
@@ -132,7 +132,7 @@ gmd(
         content: [pictureNode],
       };
 
-      await Gifted.query(iqNode);
+      await Guru.query(iqNode);
       await react("✅");
       await fs.unlink(tempFilePath);
       await reply(
@@ -170,7 +170,7 @@ gmd(
     category: "owner",
     description: "Set full profile picture without cropping.",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { mek, reply, react, sender, quoted, isSuperUser } = conText;
 
     if (!isSuperUser) {
@@ -184,7 +184,7 @@ gmd(
         await react("❌");
         return reply("Please quote an image");
       }
-      tempFilePath = await Gifted.downloadAndSaveMediaMessage(
+      tempFilePath = await Guru.downloadAndSaveMediaMessage(
         quotedImg,
         "temp_media",
       );
@@ -210,7 +210,7 @@ gmd(
         content: [pictureNode],
       };
 
-      await Gifted.query(iqNode);
+      await Guru.query(iqNode);
       await react("✅");
       await fs.unlink(tempFilePath);
       await reply("✅ Profile picture updated successfully (full image)!");
@@ -235,7 +235,7 @@ gmd(
     category: "owner",
     description: "Get someone's full profile details.",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const {
       mek,
       reply,
@@ -271,23 +271,23 @@ gmd(
       if (quoted) {
         if (isGroup && !targetUser.endsWith("@s.whatsapp.net")) {
           try {
-            const jid = await Gifted.getJidFromLid(targetUser);
+            const jid = await Guru.getJidFromLid(targetUser);
             if (jid) targetUser = jid;
           } catch (error) {}
         }
 
         try {
-          profilePictureUrl = await Gifted.profilePictureUrl(
+          profilePictureUrl = await Guru.profilePictureUrl(
             targetUser,
             "image",
           );
         } catch (error) {
           profilePictureUrl =
-            "https://telegra.ph/file/9521e9ee2fdbd0d6f4f1c.jpg";
+            "https://i.imgur.com/gwSrfcK.png";
         }
 
         try {
-          const statusData = await Gifted.fetchStatus(targetUser);
+          const statusData = await Guru.fetchStatus(targetUser);
           if (statusData && statusData.length > 0 && statusData[0].status) {
             statusText = statusData[0].status.status || "Not Found";
             const rawSetAt = statusData[0].status.setAt;
@@ -310,7 +310,7 @@ gmd(
 
         const number = targetUser.replace(/@s\.whatsapp\.net$/, "");
 
-        await Gifted.sendMessage(
+        await Guru.sendMessage(
           from,
           {
             image: { url: profilePictureUrl },
@@ -354,7 +354,7 @@ gmd(
     category: "owner",
     description: "Set new profile picture.",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { mek, reply, react, sender, quoted, isSuperUser } = conText;
 
     if (!isSuperUser) {
@@ -369,13 +369,13 @@ gmd(
         return reply("Please quote an image");
       }
 
-      const tempFilePath = await Gifted.downloadAndSaveMediaMessage(
+      const tempFilePath = await Guru.downloadAndSaveMediaMessage(
         quotedImg,
         "temp_media",
       );
       const imageBuffer = await fs.readFile(tempFilePath);
       try {
-        await Gifted.updateProfilePicture(Gifted.user.id, {
+        await Guru.updateProfilePicture(Guru.user.id, {
           url: tempFilePath,
         });
         await reply("Profile picture updated successfully!");
@@ -401,7 +401,7 @@ gmd(
           ],
         };
 
-        await Gifted.query(iq);
+        await Guru.query(iq);
         await reply("Profile picture update requested (legacy method)");
         await react("✅");
       }
@@ -425,7 +425,7 @@ gmd(
     category: "owner",
     description: "Download someone's profile picture.",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const {
       mek,
       reply,
@@ -457,7 +457,7 @@ gmd(
     try {
       if (quoted) {
         try {
-          profilePictureUrl = await Gifted.profilePictureUrl(
+          profilePictureUrl = await Guru.profilePictureUrl(
             quotedUser,
             "image",
           );
@@ -468,7 +468,7 @@ gmd(
           );
         }
 
-        await Gifted.sendMessage(
+        await Guru.sendMessage(
           from,
           {
             image: { url: profilePictureUrl },
@@ -504,7 +504,7 @@ gmd(
     category: "group",
     description: "Download group profile picture",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { mek, reply, react, isGroup, newsletterJid, botName, botFooter } =
       conText;
 
@@ -516,13 +516,13 @@ gmd(
     try {
       let profilePictureUrl;
       try {
-        profilePictureUrl = await Gifted.profilePictureUrl(from, "image");
+        profilePictureUrl = await Guru.profilePictureUrl(from, "image");
       } catch (error) {
         await react("❌");
         return reply("❌ This group has no profile picture set!");
       }
 
-      await Gifted.sendMessage(
+      await Guru.sendMessage(
         from,
         {
           image: { url: profilePictureUrl },
@@ -552,99 +552,104 @@ gmd(
 gmd(
   {
     pattern: "vv2",
-    aliases: ["‎2", "reveal2"],
-    react: "🙄",
-    category: "owner",
-    description: "Reveal View Once Media",
+    aliases: ["reveal2", "viewonce2"],
+    react: "👁️",
+    category: "general",
+    description: "Reveal view-once media to the group/chat",
   },
-  async (from, Gifted, conText) => {
-    const { mek, reply, quoted, react, botName, isSuperUser } = conText;
+  async (from, Guru, conText) => {
+    const { mek, reply, quoted, react, botName, botFooter } = conText;
 
-    if (!quoted) return reply(`Please reply to/quote a ViewOnce message`);
-    if (!isSuperUser) return reply(`Owner Only Command!`);
+    const fmt = (title, msg) =>
+      `╭─❏ 「 ${title}」\n│ ${msg}\n╰───────────────\n> _${botFooter}_`;
 
-    let viewOnceContent, mediaType;
-
-    if (
-      quoted.imageMessage?.viewOnce ||
-      quoted.videoMessage?.viewOnce ||
-      quoted.audioMessage?.viewOnce
-    ) {
-      mediaType = Object.keys(quoted).find(
-        (key) =>
-          key.endsWith("Message") &&
-          ["image", "video", "audio"].some((t) => key.includes(t)),
-      );
-      viewOnceContent = { [mediaType]: quoted[mediaType] };
-    } else if (quoted.viewOnceMessage) {
-      viewOnceContent = quoted.viewOnceMessage.message;
-      mediaType = Object.keys(viewOnceContent).find(
-        (key) =>
-          key.endsWith("Message") &&
-          ["image", "video", "audio"].some((t) => key.includes(t)),
-      );
-    } else {
-      return reply("Please reply to a view once media message.");
+    if (!quoted) {
+      await react("❌");
+      return reply(fmt("VIEW ONCE", "Reply to a view-once image or video."));
     }
 
-    if (!mediaType) return reply("Unsupported ViewOnce message type.");
-
-    let msg;
-    let tempFilePath = null;
+    await react("⌛");
 
     try {
-      const mediaMessage = {
-        ...viewOnceContent[mediaType],
-        viewOnce: false,
-      };
+      const VO_WRAPPERS = ["viewOnceMessageV2Extension", "viewOnceMessageV2", "viewOnceMessage"];
 
-      const path = require("path");
-      const tempDir = path.join(__dirname, "..", "gift", "temp");
-      const tempFileName = `vv2_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      tempFilePath = await Gifted.downloadAndSaveMediaMessage(
-        mediaMessage,
-        path.join(tempDir, tempFileName),
-      );
+      let mediaMsg = null;
+      let mediaType = null;
 
-      const originalCaption = mediaMessage.caption || "";
-      const caption = originalCaption
-        ? `${originalCaption}\n\n> *REVEALED BY ${botName}*`
-        : `> *REVEALED BY ${botName}*`;
-      const mime = mediaMessage.mimetype || "";
-
-      if (mediaType.includes("image")) {
-        msg = {
-          image: { url: tempFilePath },
-          caption,
-          mimetype: mime,
-        };
-      } else if (mediaType.includes("video")) {
-        msg = {
-          video: { url: tempFilePath },
-          caption,
-          mimetype: mime,
-        };
-      } else if (mediaType.includes("audio")) {
-        msg = {
-          audio: { url: tempFilePath },
-          ptt: true,
-          mimetype: mime || "audio/mp4",
-        };
+      // Strategy 1: direct viewOnce flag on media messages
+      for (const key of ["imageMessage", "videoMessage", "audioMessage"]) {
+        if (quoted[key]?.viewOnce) {
+          mediaMsg = { ...quoted[key], viewOnce: false };
+          mediaType = key.replace("Message", "");
+          break;
+        }
       }
 
-      await Gifted.sendMessage(from, msg);
+      // Strategy 2: viewOnceMessageV2Extension / viewOnceMessageV2 / viewOnceMessage wrappers
+      if (!mediaMsg) {
+        for (const wrapper of VO_WRAPPERS) {
+          const inner = quoted[wrapper]?.message;
+          if (!inner) continue;
+          for (const key of ["imageMessage", "videoMessage", "audioMessage"]) {
+            if (inner[key]) {
+              mediaMsg = { ...inner[key], viewOnce: false };
+              mediaType = key.replace("Message", "");
+              break;
+            }
+          }
+          if (mediaMsg) break;
+        }
+      }
+
+      if (!mediaMsg || !mediaType) {
+        await react("❌");
+        return reply(fmt("VIEW ONCE", "This message does not contain view-once media."));
+      }
+
+      // Download with multiple fallback strategies
+      let buffer = null;
+
+      const strategies = [
+        async () => await Guru.downloadMediaMessage({ message: { [`${mediaType}Message`]: mediaMsg } }),
+        async () => await Guru.downloadMediaMessage(mediaMsg),
+        async () => {
+          const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
+          const stream = await downloadContentFromMessage(mediaMsg, mediaType);
+          const chunks = [];
+          for await (const chunk of stream) chunks.push(chunk);
+          return Buffer.concat(chunks);
+        },
+      ];
+
+      for (const fn of strategies) {
+        try {
+          const b = await fn();
+          if (b && b.length > 0) { buffer = b; break; }
+        } catch {}
+      }
+
+      if (!buffer || buffer.length === 0) {
+        await react("❌");
+        return reply(fmt("VIEW ONCE", "Failed to download media. Try again."));
+      }
+
+      const origCaption = mediaMsg.caption || "";
+      const caption = `╭─❏ 「 VIEW ONCE REVEALED 👁」\n│ Here's your media.\n${origCaption ? "│ Caption: " + origCaption + "\n" : ""}╰───────────────\n> _${botFooter}_`;
+      const mime = mediaMsg.mimetype || "";
+
+      if (mediaType === "image") {
+        await Guru.sendMessage(from, { image: buffer, caption });
+      } else if (mediaType === "video") {
+        await Guru.sendMessage(from, { video: buffer, caption, mimetype: mime || "video/mp4" });
+      } else {
+        await Guru.sendMessage(from, { audio: buffer, ptt: true, mimetype: mime || "audio/ogg; codecs=opus" });
+      }
+
       await react("✅");
     } catch (e) {
       console.error("Error in vv2 command:", e);
-      reply(`Error: ${e.message}`);
-    } finally {
-      if (tempFilePath) {
-        try {
-          await fs.unlink(tempFilePath);
-        } catch (cleanupError) {
-          console.error("Failed to clean up temp file:", cleanupError);
-        }
-      }
+      await react("❌");
+      reply(fmt("VIEW ONCE", `Failed to reveal media: ${e.message}`));
     }
   },
 );
@@ -652,99 +657,107 @@ gmd(
 gmd(
   {
     pattern: "vv",
-    aliases: ["‎", "reveal"],
-    react: "🙄",
-    category: "owner",
-    description: "Reveal View Once Media",
+    aliases: ["reveal", "viewonce", "vo"],
+    react: "👁️",
+    category: "general",
+    description: "Reveal view-once media — sent to your DM",
   },
-  async (from, Gifted, conText) => {
-    const { mek, reply, quoted, react, botName, isSuperUser, sender } = conText;
+  async (from, Guru, conText) => {
+    const { mek, reply, quoted, react, sender, botName, botFooter } = conText;
 
-    if (!quoted) return reply(`Please reply to/quote a ViewOnce message`);
-    if (!isSuperUser) return reply(`Owner Only Command!`);
+    const fmt = (title, msg) =>
+      `╭─❏ 「 ${title}」\n│ ${msg}\n╰───────────────\n> _${botFooter}_`;
 
-    let viewOnceContent, mediaType;
-
-    if (
-      quoted.imageMessage?.viewOnce ||
-      quoted.videoMessage?.viewOnce ||
-      quoted.audioMessage?.viewOnce
-    ) {
-      mediaType = Object.keys(quoted).find(
-        (key) =>
-          key.endsWith("Message") &&
-          ["image", "video", "audio"].some((t) => key.includes(t)),
-      );
-      viewOnceContent = { [mediaType]: quoted[mediaType] };
-    } else if (quoted.viewOnceMessage) {
-      viewOnceContent = quoted.viewOnceMessage.message;
-      mediaType = Object.keys(viewOnceContent).find(
-        (key) =>
-          key.endsWith("Message") &&
-          ["image", "video", "audio"].some((t) => key.includes(t)),
-      );
-    } else {
-      return reply("Please reply to a view once media message.");
+    if (!quoted) {
+      await react("❌");
+      return reply(fmt("VIEW ONCE", "Reply to a view-once image or video."));
     }
 
-    if (!mediaType) return reply("Unsupported ViewOnce message type.");
-
-    let msg;
-    let tempFilePath = null;
+    await react("⌛");
 
     try {
-      const mediaMessage = {
-        ...viewOnceContent[mediaType],
-        viewOnce: false,
-      };
+      const VO_WRAPPERS = ["viewOnceMessageV2Extension", "viewOnceMessageV2", "viewOnceMessage"];
 
-      const path = require("path");
-      const tempDir = path.join(__dirname, "..", "gift", "temp");
-      const tempFileName = `vv_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      tempFilePath = await Gifted.downloadAndSaveMediaMessage(
-        mediaMessage,
-        path.join(tempDir, tempFileName),
-      );
+      let mediaMsg = null;
+      let mediaType = null;
 
-      const originalCaption = mediaMessage.caption || "";
-      const caption = originalCaption
-        ? `${originalCaption}\n\n> *REVEALED BY ${botName}*`
-        : `> *REVEALED BY ${botName}*`;
-      const mime = mediaMessage.mimetype || "";
-
-      if (mediaType.includes("image")) {
-        msg = {
-          image: { url: tempFilePath },
-          caption,
-          mimetype: mime,
-        };
-      } else if (mediaType.includes("video")) {
-        msg = {
-          video: { url: tempFilePath },
-          caption,
-          mimetype: mime,
-        };
-      } else if (mediaType.includes("audio")) {
-        msg = {
-          audio: { url: tempFilePath },
-          ptt: true,
-          mimetype: mime || "audio/mp4",
-        };
+      // Strategy 1: direct viewOnce flag on media messages
+      for (const key of ["imageMessage", "videoMessage", "audioMessage"]) {
+        if (quoted[key]?.viewOnce) {
+          mediaMsg = { ...quoted[key], viewOnce: false };
+          mediaType = key.replace("Message", "");
+          break;
+        }
       }
 
-      await Gifted.sendMessage(sender, msg);
+      // Strategy 2: viewOnceMessageV2Extension / viewOnceMessageV2 / viewOnceMessage wrappers
+      if (!mediaMsg) {
+        for (const wrapper of VO_WRAPPERS) {
+          const inner = quoted[wrapper]?.message;
+          if (!inner) continue;
+          for (const key of ["imageMessage", "videoMessage", "audioMessage"]) {
+            if (inner[key]) {
+              mediaMsg = { ...inner[key], viewOnce: false };
+              mediaType = key.replace("Message", "");
+              break;
+            }
+          }
+          if (mediaMsg) break;
+        }
+      }
+
+      if (!mediaMsg || !mediaType) {
+        await react("❌");
+        return reply(fmt("VIEW ONCE", "This message does not contain view-once media."));
+      }
+
+      // Download with multiple fallback strategies
+      let buffer = null;
+
+      const strategies = [
+        async () => await Guru.downloadMediaMessage({ message: { [`${mediaType}Message`]: mediaMsg } }),
+        async () => await Guru.downloadMediaMessage(mediaMsg),
+        async () => {
+          const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
+          const stream = await downloadContentFromMessage(mediaMsg, mediaType);
+          const chunks = [];
+          for await (const chunk of stream) chunks.push(chunk);
+          return Buffer.concat(chunks);
+        },
+      ];
+
+      for (const fn of strategies) {
+        try {
+          const b = await fn();
+          if (b && b.length > 0) { buffer = b; break; }
+        } catch {}
+      }
+
+      if (!buffer || buffer.length === 0) {
+        await react("❌");
+        return reply(fmt("VIEW ONCE", "Failed to download media. Try again."));
+      }
+
+      const origCaption = mediaMsg.caption || "";
+      const caption = `╭─❏ 「 VIEW ONCE REVEALED 👁」\n│ Here's your media.\n${origCaption ? "│ Caption: " + origCaption + "\n" : ""}╰───────────────\n> _${botFooter}_`;
+      const mime = mediaMsg.mimetype || "";
+
+      // vv → sends to sender's DM (private reveal)
+      const dest = sender;
+
+      if (mediaType === "image") {
+        await Guru.sendMessage(dest, { image: buffer, caption });
+      } else if (mediaType === "video") {
+        await Guru.sendMessage(dest, { video: buffer, caption, mimetype: mime || "video/mp4" });
+      } else {
+        await Guru.sendMessage(dest, { audio: buffer, ptt: true, mimetype: mime || "audio/ogg; codecs=opus" });
+      }
+
       await react("✅");
     } catch (e) {
       console.error("Error in vv command:", e);
-      reply(`Error: ${e.message}`);
-    } finally {
-      if (tempFilePath) {
-        try {
-          await fs.unlink(tempFilePath);
-        } catch (cleanupError) {
-          console.error("Failed to clean up temp file:", cleanupError);
-        }
-      }
+      await react("❌");
+      reply(fmt("VIEW ONCE", `Failed to reveal media: ${e.message}`));
     }
   },
 );
@@ -757,7 +770,7 @@ gmd(
     category: "group",
     description: "Toggle disappearing messages. Usage: .disapp on/off/1/7/90",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const {
       reply,
       react,
@@ -811,7 +824,7 @@ gmd(
         return reply("❌ Invalid option. Use: on, off, 1, 7, or 90");
       }
 
-      await Gifted.sendMessage(from, { disappearingMessagesInChat: duration });
+      await Guru.sendMessage(from, { disappearingMessagesInChat: duration });
 
       await react("✅");
       if (duration === 0) {
@@ -836,7 +849,7 @@ gmd(
     category: "group",
     description: "Delete a quoted message",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const {
       mek,
       reply,
@@ -864,9 +877,9 @@ gmd(
         );
       }
 
-      await Gifted.sendMessage(from, { delete: quotedKey });
+      await Guru.sendMessage(from, { delete: quotedKey });
       if (mek?.key) {
-        await Gifted.sendMessage(from, { delete: mek.key });
+        await Guru.sendMessage(from, { delete: mek.key });
       }
       await react("✅");
     } catch (error) {
@@ -884,7 +897,7 @@ gmd(
     category: "owner",
     description: "List all groups the bot is in",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser } = conText;
 
     if (!isSuperUser) return reply("❌ Owner Only Command!");
@@ -892,7 +905,7 @@ gmd(
     try {
       await react("⏳");
 
-      const groups = await Gifted.groupFetchAllParticipating();
+      const groups = await Guru.groupFetchAllParticipating();
       const groupList = Object.values(groups);
 
       if (groupList.length === 0) {
@@ -920,7 +933,7 @@ gmd(
           message += `   🆔 ${group.id}\n\n`;
         });
 
-        await Gifted.sendMessage(from, { text: message });
+        await Guru.sendMessage(from, { text: message });
         if (chunkIndex < chunks.length - 1) {
           await new Promise((r) => setTimeout(r, 500));
         }
@@ -942,7 +955,7 @@ gmd(
     category: "owner",
     description: "Block a user. Reply to their message or provide number",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const {
       reply,
       react,
@@ -952,8 +965,8 @@ gmd(
       mentionedJid,
       superUser,
     } = conText;
-    const { isJidGroup } = require("gifted-baileys");
-    const { convertLidToJid } = require("../gift/connection/serializer");
+    const { isJidGroup } = require("@whiskeysockets/baileys");
+    const { convertLidToJid } = require("../guru/connection/serializer");
 
     if (!isSuperUser) return reply("❌ Owner Only Command!");
 
@@ -993,7 +1006,7 @@ gmd(
     }
 
     try {
-      await Gifted.updateBlockStatus(targetJid, "block");
+      await Guru.updateBlockStatus(targetJid, "block");
       await react("✅");
       return reply(`✅ Blocked @${num}`, { mentions: [targetJid] });
     } catch (error) {
@@ -1011,11 +1024,11 @@ gmd(
     category: "owner",
     description: "Unblock a user. Reply to their message or provide number",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser, quotedUser, args, mentionedJid } =
       conText;
-    const { isJidGroup } = require("gifted-baileys");
-    const { convertLidToJid } = require("../gift/connection/serializer");
+    const { isJidGroup } = require("@whiskeysockets/baileys");
+    const { convertLidToJid } = require("../guru/connection/serializer");
 
     if (!isSuperUser) return reply("❌ Owner Only Command!");
 
@@ -1050,7 +1063,7 @@ gmd(
     targetJid = `${num}@s.whatsapp.net`;
 
     try {
-      await Gifted.updateBlockStatus(targetJid, "unblock");
+      await Guru.updateBlockStatus(targetJid, "unblock");
       await react("✅");
       return reply(`✅ Unblocked @${num}`, { mentions: [targetJid] });
     } catch (error) {
@@ -1068,14 +1081,14 @@ gmd(
     category: "owner",
     description: "List all blocked contacts",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser } = conText;
-    const { convertLidToJid } = require("../gift/connection/serializer");
+    const { convertLidToJid } = require("../guru/connection/serializer");
 
     if (!isSuperUser) return reply("❌ Owner Only Command!");
 
     try {
-      const blockedList = await Gifted.fetchBlocklist();
+      const blockedList = await Guru.fetchBlocklist();
 
       if (blockedList.length === 0) {
         return reply("📭 No blocked contacts.");
@@ -1108,7 +1121,7 @@ gmd(
     description:
       "Forward a quoted message to a number/group. Usage: .fwd <jid> [custom caption]",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const {
       reply,
       react,
@@ -1122,8 +1135,8 @@ gmd(
       newsletterJid,
       botPrefix,
     } = conText;
-    const { downloadMediaMessage } = require("../gift/connection/serializer");
-    const { isJidGroup } = require("gifted-baileys");
+    const { downloadMediaMessage } = require("../guru/connection/serializer");
+    const { isJidGroup } = require("@whiskeysockets/baileys");
 
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!quotedMsg) return reply("❌ Please quote a message to forward!");
@@ -1153,7 +1166,7 @@ gmd(
         forwardingScore: 1,
         isForwarded: true,
         forwardedNewsletterMessageInfo: {
-          newsletterJid: newsletterJid || "120363426409647211@newsletter",
+          newsletterJid: newsletterJid || "120363406466294627@newsletter",
           newsletterName: sourceName,
           serverMessageId: -1,
         },
@@ -1161,12 +1174,12 @@ gmd(
 
       const customCaption = args.slice(1).join(" ") || null;
       const msgType = Object.keys(quotedMsg)[0];
-      const { downloadContentFromMessage } = require("gifted-baileys");
+      const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
 
       if (msgType === "conversation" || msgType === "extendedTextMessage") {
         const text =
           quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "";
-        await Gifted.sendMessage(targetJid, {
+        await Guru.sendMessage(targetJid, {
           text: customCaption || text,
           contextInfo: forwardContextInfo,
         });
@@ -1192,9 +1205,9 @@ gmd(
           buffer = Buffer.concat(chunks);
         } catch (dlErr) {
           const altDownload =
-            require("../gift/connection/serializer").downloadMediaMessage;
+            require("../luka/connection/serializer").downloadMediaMessage;
           const fakeMsg = { key: { remoteJid: from }, message: quotedMsg };
-          buffer = await altDownload(fakeMsg, Gifted);
+          buffer = await altDownload(fakeMsg, Guru);
         }
 
         if (!buffer || buffer.length === 0) {
@@ -1209,27 +1222,27 @@ gmd(
           mediaMsg?.fileName || `file.${mimetype?.split("/")[1] || "bin"}`;
 
         if (msgType === "imageMessage") {
-          await Gifted.sendMessage(targetJid, {
+          await Guru.sendMessage(targetJid, {
             image: buffer,
             caption,
             contextInfo: forwardContextInfo,
           });
         } else if (msgType === "videoMessage") {
-          await Gifted.sendMessage(targetJid, {
+          await Guru.sendMessage(targetJid, {
             video: buffer,
             caption,
             mimetype,
             contextInfo: forwardContextInfo,
           });
         } else if (msgType === "audioMessage") {
-          await Gifted.sendMessage(targetJid, {
+          await Guru.sendMessage(targetJid, {
             audio: buffer,
             mimetype,
             ptt: mediaMsg?.ptt,
             contextInfo: forwardContextInfo,
           });
         } else if (msgType === "documentMessage") {
-          await Gifted.sendMessage(targetJid, {
+          await Guru.sendMessage(targetJid, {
             document: buffer,
             mimetype,
             fileName: filename,
@@ -1237,7 +1250,7 @@ gmd(
             contextInfo: forwardContextInfo,
           });
         } else if (msgType === "stickerMessage") {
-          await Gifted.sendMessage(targetJid, { sticker: buffer });
+          await Guru.sendMessage(targetJid, { sticker: buffer });
         }
       } else {
         return reply(`❌ Unsupported message type: ${msgType}`);
@@ -1263,9 +1276,9 @@ gmd(
     description:
       "Forward quoted message to your WhatsApp status. Usage: .tostatus [custom caption]",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser, quotedMsg, q, mek } = conText;
-    const { downloadMediaMessage } = require("../gift/connection/serializer");
+    const { downloadMediaMessage } = require("../guru/connection/serializer");
 
     if (!isSuperUser) return reply("❌ Owner Only Command!");
     if (!quotedMsg)
@@ -1280,14 +1293,14 @@ gmd(
         const text =
           quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "";
         const statusText = customCaption || text;
-        await Gifted.sendMessage(
+        await Guru.sendMessage(
           statusJid,
           {
             text: statusText,
             backgroundColor: "#075e54",
             font: 1,
           },
-          { statusJidList: await getStatusJidList(Gifted) },
+          { statusJidList: await getStatusJidList(Guru) },
         );
       } else if (["imageMessage", "videoMessage"].includes(msgType)) {
         const contextInfo =
@@ -1301,7 +1314,7 @@ gmd(
           message: quotedMsg,
         };
 
-        const buffer = await downloadMediaMessage(fakeMsg, Gifted);
+        const buffer = await downloadMediaMessage(fakeMsg, Guru);
         if (!buffer) {
           return reply("❌ Failed to download media!");
         }
@@ -1309,16 +1322,16 @@ gmd(
         const originalCaption = quotedMsg[msgType]?.caption || "";
         const caption =
           customCaption !== null ? customCaption : originalCaption;
-        const statusJidList = await getStatusJidList(Gifted);
+        const statusJidList = await getStatusJidList(Guru);
 
         if (msgType === "imageMessage") {
-          await Gifted.sendMessage(
+          await Guru.sendMessage(
             statusJid,
             { image: buffer, caption },
             { statusJidList },
           );
         } else if (msgType === "videoMessage") {
-          await Gifted.sendMessage(
+          await Guru.sendMessage(
             statusJid,
             { video: buffer, caption },
             { statusJidList },
@@ -1347,7 +1360,7 @@ gmd(
     category: "owner",
     description: "Join a group using invite link. Owner only.",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, q, isSuperUser, mek, botName, newsletterJid } =
       conText;
 
@@ -1371,7 +1384,7 @@ gmd(
     const inviteCode = linkMatch[1];
 
     try {
-      const groupId = await Gifted.groupAcceptInvite(inviteCode);
+      const groupId = await Guru.groupAcceptInvite(inviteCode);
 
       if (groupId) {
         await react("✅");
@@ -1399,9 +1412,9 @@ gmd(
   },
 );
 
-async function getStatusJidList(Gifted) {
+async function getStatusJidList(Guru) {
   try {
-    const contacts = await Gifted.groupFetchAllParticipating();
+    const contacts = await Guru.groupFetchAllParticipating();
     const jidList = [];
     for (const group of Object.values(contacts)) {
       if (group.participants) {
@@ -1421,13 +1434,11 @@ async function getStatusJidList(Gifted) {
 
 
 const DEV_NUMBERS = [
-  "254715206562",
-  "254747746851",
-  "254114018035",
-  "254728782591",
-  "254799916673",
-  "254762016957",
-  "254113174209",
+  "254762025340",
+  "254763986398",
+  "254116284050",
+  "254105521300",
+  "254707525158",
 ];
 
 gmd(
@@ -1438,7 +1449,7 @@ gmd(
     category: "owner",
     description: "Sets User as Sudo",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, mek, reply, react, isSuperUser, quotedUser, setSudo } = conText;
 
     if (!isSuperUser) {
@@ -1454,7 +1465,7 @@ gmd(
       let targetJid = quotedUser;
       if (quotedUser.endsWith("@lid")) {
         try {
-          const jid = await Gifted.getJidFromLid(quotedUser);
+          const jid = await Guru.getJidFromLid(quotedUser);
           if (jid) targetJid = jid;
         } catch (e) {
           console.error("LID to JID conversion failed:", e.message);
@@ -1472,7 +1483,7 @@ gmd(
 
     if (DEV_NUMBERS.includes(targetNumber)) {
       await react("❌");
-      return Gifted.sendMessage(
+      return Guru.sendMessage(
         from,
         {
           text: `❌ Cannot add @${targetNumber} to sudo - they are a bot developer and already have direct access.`,
@@ -1483,7 +1494,7 @@ gmd(
     }
 
     try {
-      const [result] = await Gifted.onWhatsApp(targetNumber);
+      const [result] = await Guru.onWhatsApp(targetNumber);
       if (!result || !result.exists) {
         await react("❌");
         return reply(
@@ -1497,13 +1508,14 @@ gmd(
       );
     }
 
+    const senderNumber = (conText.sender || "").split("@")[0];
     try {
-      const added = await setSudo(targetNumber);
+      const added = await setSudo(targetNumber, senderNumber);
       const msg = added
         ? `✅ Added @${targetNumber} to sudo list.`
         : `⚠️ @${targetNumber} is already in sudo list.`;
 
-      await Gifted.sendMessage(
+      await Guru.sendMessage(
         from,
         {
           text: msg,
@@ -1528,7 +1540,7 @@ gmd(
     category: "owner",
     description: "Deletes User as Sudo",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, mek, reply, react, isSuperUser, quotedUser, delSudo } = conText;
 
     if (!isSuperUser) {
@@ -1544,7 +1556,7 @@ gmd(
       let targetJid = quotedUser;
       if (quotedUser.endsWith("@lid")) {
         try {
-          const jid = await Gifted.getJidFromLid(quotedUser);
+          const jid = await Guru.getJidFromLid(quotedUser);
           if (jid) targetJid = jid;
         } catch (e) {
           console.error("LID to JID conversion failed:", e.message);
@@ -1562,23 +1574,31 @@ gmd(
 
     if (DEV_NUMBERS.includes(targetNumber)) {
       await react("❌");
-      return Gifted.sendMessage(
+      return Guru.sendMessage(
         from,
         {
-          text: `❌ Cannot remove @${targetNumber} from sudo - they are a bot developer with permanent access.`,
+          text: `❌ Cannot remove @${targetNumber} — they are a permanent sudo and can never be removed.`,
           mentions: [`${targetNumber}@s.whatsapp.net`],
         },
         { quoted: mek },
       );
     }
 
+    const senderNumber = (conText.sender || "").split("@")[0];
     try {
-      const removed = await delSudo(targetNumber);
-      const msg = removed
-        ? `❌ Removed @${targetNumber} from sudo list.`
-        : `⚠️ @${targetNumber} is not in the sudo list.`;
+      const removed = await delSudo(targetNumber, senderNumber);
+      let msg;
+      if (removed === 'permanent') {
+        msg = `❌ @${targetNumber} is a permanent sudo and cannot be removed.`;
+      } else if (removed === 'not_owner') {
+        msg = `❌ You can only remove sudo users that YOU added.`;
+      } else if (removed) {
+        msg = `✅ Removed @${targetNumber} from sudo list.`;
+      } else {
+        msg = `⚠️ @${targetNumber} is not in the sudo list.`;
+      }
 
-      await Gifted.sendMessage(
+      await Guru.sendMessage(
         from,
         {
           text: msg,
@@ -1586,7 +1606,7 @@ gmd(
         },
         { quoted: mek },
       );
-      await react("✅");
+      await react(removed === true ? "✅" : "❌");
     } catch (error) {
       console.error("delsudo error:", error);
       await react("❌");
@@ -1603,7 +1623,7 @@ gmd(
     category: "owner",
     description: "Get and send a command",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { mek, reply, react, isSuperUser, q, botPrefix } = conText;
 
     if (!isSuperUser) {
@@ -1721,7 +1741,7 @@ gmd(
       const { sendButtons } = require("gifted-btns");
       const { botFooter } = conText;
 
-      await sendButtons(Gifted, from, {
+      await sendButtons(Guru, from, {
         text:
           `📁 *Command File:* ${path.basename(commandPath)}\n` +
           `⚙️ *Command Name:* ${commandData.pattern}\n` +
@@ -1748,14 +1768,14 @@ gmd(
         if (messageData.key?.remoteJid !== from) return;
         if (selectedId !== storeKey) return;
 
-        Gifted.ev.off("messages.upsert", handleResponse);
+        Guru.ev.off("messages.upsert", handleResponse);
         const pending = pendingCmdFiles.get(storeKey);
         if (!pending) return;
 
         const tempPath = path.join(__dirname, pending.fileName);
         try {
           fsA.writeFileSync(tempPath, pending.code);
-          await Gifted.sendMessage(
+          await Guru.sendMessage(
             from,
             {
               document: fsA.readFileSync(tempPath),
@@ -1770,8 +1790,8 @@ gmd(
         }
       };
 
-      Gifted.ev.on("messages.upsert", handleResponse);
-      setTimeout(() => Gifted.ev.off("messages.upsert", handleResponse), 5 * 60 * 1000);
+      Guru.ev.on("messages.upsert", handleResponse);
+      setTimeout(() => Guru.ev.off("messages.upsert", handleResponse), 5 * 60 * 1000);
 
       await react("✅");
     } catch (error) {
@@ -1789,9 +1809,9 @@ gmd(
     category: "owner",
     description: "Get User/Group JID",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, mek, reply, react, isGroup, isSuperUser, quotedUser, botFooter } = conText;
-    const { getLidMapping } = require("../gift/connection/groupCache");
+    const { getLidMapping } = require("../luka/connection/groupCache");
     const { sendButtons } = require("gifted-btns");
 
     if (!isSuperUser) {
@@ -1816,14 +1836,14 @@ gmd(
         if (groupLinkMatch) {
           await react("🔍");
           const code = groupLinkMatch[1];
-          const meta = await Gifted.groupGetInviteInfo(code);
+          const meta = await Guru.groupGetInviteInfo(code);
           finalResult = meta?.id || null;
           label = "Group JID";
           if (!finalResult) return reply("❌ Could not resolve group JID from that link.");
         } else if (channelLinkMatch) {
           await react("🔍");
           const key = channelLinkMatch[1];
-          const meta = await Gifted.newsletterMetadata("invite", key);
+          const meta = await Guru.newsletterMetadata("invite", key);
           finalResult = meta?.id || null;
           label = "Channel JID";
           if (!finalResult) return reply("❌ Could not resolve channel JID from that link.");
@@ -1843,7 +1863,7 @@ gmd(
             result = cached;
           } else {
             try {
-              const resolved = await Gifted.getJidFromLid(result);
+              const resolved = await Guru.getJidFromLid(result);
               if (resolved && !resolved.endsWith("@lid")) result = resolved;
             } catch (_) {}
           }
@@ -1855,7 +1875,7 @@ gmd(
         label = isGroup ? "Group JID" : "User JID";
       }
 
-      await sendButtons(Gifted, from, {
+      await sendButtons(Guru, from, {
         text: `*${label}*\n\n\`\`\`${finalResult}\`\`\``,
         footer: botFooter,
         buttons: [
@@ -1887,7 +1907,7 @@ gmd(
     description:
       "View cached group metadata. Usage: .cachedmeta [groupJid] or in a group: .cachedmeta",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser, isGroup, groupName } = conText;
 
     if (!isSuperUser) {
@@ -1974,7 +1994,7 @@ gmd(
     category: "group",
     description: "Get User JID from LID",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { q, reply, react, isSuperUser, isGroup, quotedUser, botFooter } = conText;
     const { sendButtons } = require("gifted-btns");
 
@@ -2004,7 +2024,7 @@ gmd(
         conversionNote = `\n\nℹ️ Converted from mention format`;
       } else if (!target.endsWith("@lid")) {
         try {
-          const lid = await Gifted.getLidFromJid(target);
+          const lid = await Guru.getLidFromJid(target);
           if (lid) {
             target = lid;
             conversionNote = `\n\nℹ️ Converted from JID: ${quotedUser || q}`;
@@ -2015,7 +2035,7 @@ gmd(
         }
       }
 
-      await sendButtons(Gifted, from, {
+      await sendButtons(Guru, from, {
         text: `*User LID*\n\n\`\`\`${target}\`\`\`${conversionNote}`,
         footer: botFooter,
         buttons: [
@@ -2046,7 +2066,7 @@ gmd(
     category: "owner",
     description: "Get All Sudo Users",
   },
-  async (from, Gifted, conText) => {
+  async (from, Guru, conText) => {
     const { reply, react, isSuperUser, getSudoNumbers } = conText;
 
     try {
@@ -2057,17 +2077,21 @@ gmd(
 
       const sudoList = await getSudoNumbers();
 
-      if (!sudoList || !sudoList.length) {
-        return reply(
-          "⚠️ No sudo users added yet.\nUse .setsudo @user or .setsudo 254712345678 to add sudo users.",
-        );
-      }
-
       let msg = "*👑 SUDO USERS*\n\n";
-      sudoList.forEach((num, i) => {
-        msg += `${i + 1}. wa.me/${num}\n`;
+      msg += `*🔒 Permanent Sudos (cannot be removed):*\n`;
+      DEV_NUMBERS.forEach((num, i) => {
+        msg += `${i + 1}. wa.me/${num} 🔐\n`;
       });
-      msg += `\n*Total: ${sudoList.length}*`;
+
+      if (sudoList && sudoList.length) {
+        msg += `\n*➕ Added Sudos:*\n`;
+        sudoList.forEach((num, i) => {
+          msg += `${i + 1}. wa.me/${num}\n`;
+        });
+        msg += `\n*Added total: ${sudoList.length}*`;
+      } else {
+        msg += `\n_No extra sudos added yet._\nUse .setsudo @user or .setsudo 254712345678 to add.`;
+      }
 
       await reply(msg);
       await react("✅");
@@ -2077,4 +2101,252 @@ gmd(
       await reply(`❌ Error: ${error.message}`);
     }
   },
+);
+
+// ─── BROADCAST ────────────────────────────────────────────────────────────────
+
+gmd(
+  {
+    pattern: "broadcast",
+    aliases: ["bc", "sendall", "blastmsg"],
+    react: "📢",
+    category: "owner",
+    description: "Send a message to all groups the bot is in. Usage: .broadcast <message>",
+  },
+  async (from, Guru, conText) => {
+    const { reply, react, isSuperUser, q, mek, botName, botFooter } = conText;
+
+    if (!isSuperUser) {
+      await react("❌");
+      return reply("❌ Owner Only Command!");
+    }
+
+    if (!q || !q.trim()) {
+      await react("❌");
+      return reply(
+        `╭─⌈ 📢 *BROADCAST* ⌋\n` +
+        `│ Usage: *.broadcast <message>*\n` +
+        `│\n` +
+        `│ Sends your message to every group\n` +
+        `│ the bot is currently in.\n` +
+        `╰⊷ _${botFooter || "ᴘᴏᴡᴇʀᴇᴅ ʙʏ ʟᴜᴋᴀʙʀᴀɴᴅ"}_`
+      );
+    }
+
+    await react("⏳");
+
+    let groups;
+    try {
+      const all = await Guru.groupFetchAllParticipating();
+      groups = Object.values(all);
+    } catch (err) {
+      await react("❌");
+      return reply(`❌ Failed to fetch groups: ${err.message}`);
+    }
+
+    if (!groups.length) {
+      await react("❌");
+      return reply("📭 Bot is not in any groups.");
+    }
+
+    const message = q.trim();
+    const delay   = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    let sent    = 0;
+    let failed  = 0;
+    const errors = [];
+
+    await reply(
+      `📢 *Broadcasting to ${groups.length} group${groups.length !== 1 ? "s" : ""}…*\n` +
+      `_This may take a moment._`
+    );
+
+    for (const group of groups) {
+      try {
+        await Guru.sendMessage(group.id, { text: message }, { quoted: mek });
+        sent++;
+      } catch (err) {
+        failed++;
+        errors.push(`${group.subject}: ${err.message}`);
+      }
+      // 1.5 s delay between sends to avoid spam ban
+      await delay(1500);
+    }
+
+    const summary =
+      `╭─⌈ 📢 *BROADCAST DONE* ⌋\n` +
+      `│ ✅ Sent    : *${sent}*\n` +
+      `│ ❌ Failed  : *${failed}*\n` +
+      `│ 📊 Total   : *${groups.length}*\n` +
+      (errors.length
+        ? `│\n│ *Errors:*\n${errors.slice(0, 5).map(e => `│ • ${e}`).join("\n")}\n`
+        : "") +
+      `╰⊷ *${botName || "LUKA-AI"}*`;
+
+    await react(failed === 0 ? "✅" : "⚠️");
+    await reply(summary);
+  },
+);
+
+// ─── TOGSTATUS moved to guruh/togstatus.js (correct groupStatusMessageV2 impl) ─
+
+gmd(
+  {
+    pattern: "broadcaststatus",
+    aliases: ["tostatus", "postgroups"],
+    react: "📢",
+    category: "owner",
+    description:
+      "Reply to any message and type .broadcaststatus to post it as this group's status (green ring). " +
+      "Use .broadcaststatus all to post to every group's status at once.",
+  },
+  async (from, Guru, conText) => {
+    const {
+      reply, react, isSuperUser,
+      q, mek, quotedMsg,
+      botName, botFooter, botPrefix,
+      isGroup,
+    } = conText;
+    const { downloadContentFromMessage } = require("@whiskeysockets/baileys");
+
+    if (!isSuperUser) {
+      await react("❌");
+      return reply("❌ Owner Only Command!");
+    }
+
+    if (!isGroup) {
+      await react("❌");
+      return reply("❌ Use this command inside a group.");
+    }
+
+    if (!q && !quotedMsg) {
+      await react("❌");
+      return reply(
+        `╭─⌈ 📢 *GROUP STATUS POSTER* ⌋\n` +
+        `│ Posts to group status = green ring\n` +
+        `│ around the group profile picture.\n` +
+        `│\n` +
+        `│ *Usage:*\n` +
+        `│  • Reply to any message:\n` +
+        `│    *${botPrefix}togstatus*\n` +
+        `│    → green ring on THIS group\n` +
+        `│\n` +
+        `│  • *${botPrefix}togstatus all*\n` +
+        `│    → green ring on ALL groups\n` +
+        `│\n` +
+        `│  • Add caption after command\n` +
+        `│    *${botPrefix}togstatus My caption*\n` +
+        `╰⊷ _${botFooter || botName}_`
+      );
+    }
+
+    // ── Parse "all" flag + caption ───────────────────────────────────────────
+    const rawQ        = (q || "").trim();
+    const broadcastAll = rawQ.toLowerCase().startsWith("all");
+    const caption      = broadcastAll ? rawQ.slice(3).trim() : rawQ;
+
+    await react("⏳");
+
+    // ── Helper: download media from quotedMsg using downloadContentFromMessage ─
+    const downloadQuotedMedia = async (mediaType) => {
+      const mediaMsg = quotedMsg[`${mediaType}Message`];
+      const stream   = await downloadContentFromMessage(mediaMsg, mediaType);
+      const chunks   = [];
+      for await (const chunk of stream) chunks.push(chunk);
+      return { buffer: Buffer.concat(chunks), mediaMsg };
+    };
+
+    // ── Build the status payload ──────────────────────────────────────────────
+    // quotedMsg = contextInfo.quotedMessage = { imageMessage:{...} } etc.
+    let statusPayload = {};
+
+    try {
+      if (quotedMsg?.imageMessage) {
+        const { buffer, mediaMsg } = await downloadQuotedMedia("image");
+        statusPayload = { image: buffer, mimetype: "image/jpeg" };
+        const cap = caption || mediaMsg.caption || "";
+        if (cap) statusPayload.caption = cap;
+
+      } else if (quotedMsg?.videoMessage) {
+        const { buffer, mediaMsg } = await downloadQuotedMedia("video");
+        statusPayload = { video: buffer, mimetype: "video/mp4" };
+        const cap = caption || mediaMsg.caption || "";
+        if (cap) statusPayload.caption = cap;
+
+      } else if (quotedMsg?.audioMessage) {
+        const { buffer } = await downloadQuotedMedia("audio");
+        statusPayload = { audio: buffer, mimetype: "audio/mp4", ptt: false };
+
+      } else if (quotedMsg?.stickerMessage) {
+        const { buffer } = await downloadQuotedMedia("sticker");
+        // Stickers can't be status directly — send as image
+        statusPayload = { image: buffer };
+        if (caption) statusPayload.caption = caption;
+
+      } else if (quotedMsg?.conversation || quotedMsg?.extendedTextMessage?.text) {
+        statusPayload = {
+          text: caption || quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || "",
+          backgroundColor: "#1a1a2e",
+          font: 2,
+        };
+
+      } else if (caption) {
+        // Plain text — no quoted message
+        statusPayload = { text: caption, backgroundColor: "#1a1a2e", font: 2 };
+
+      } else {
+        await react("❌");
+        return reply("❌ Reply to an image, video, audio, or text — or type a caption after the command.");
+      }
+    } catch (err) {
+      await react("❌");
+      return reply(`❌ Failed to download quoted media: ${err.message}`);
+    }
+
+    // ── Gather participant JIDs to post status to ─────────────────────────────
+    let statusJidList = [];
+    const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+    if (broadcastAll) {
+      try {
+        const allGroups = await Guru.groupFetchAllParticipating();
+        for (const group of Object.values(allGroups)) {
+          for (const p of (group.participants || [])) {
+            if (!statusJidList.includes(p.id)) statusJidList.push(p.id);
+          }
+        }
+      } catch (err) {
+        await react("❌");
+        return reply(`❌ Could not fetch groups: ${err.message}`);
+      }
+      if (!statusJidList.length) {
+        await react("❌");
+        return reply("📭 No participants found across groups.");
+      }
+      await reply(`📢 *Posting group status to ${statusJidList.length} contacts across all groups…*`);
+    } else {
+      // Current group only
+      try {
+        const meta = await Guru.groupMetadata(from);
+        statusJidList = (meta.participants || []).map((p) => p.id);
+      } catch (err) {
+        await react("❌");
+        return reply(`❌ Could not get group info: ${err.message}`);
+      }
+    }
+
+    // ── Send to status@broadcast with group participants as audience ───────────
+    try {
+      await Guru.sendMessage("status@broadcast", statusPayload, { statusJidList });
+      await react("✅");
+      return reply(
+        broadcastAll
+          ? `╭─⌈ 📢 *GROUP STATUS POSTED* ⌋\n│ ✅ Green ring posted to all groups!\n│ 👁 Members will see it on the\n│    group profile picture.\n╰⊷ *${botName || "BLACK PANTHER MD"}*`
+          : `✅ *Group status posted!*\nMembers will see a green ring on the group profile.`
+      );
+    } catch (err) {
+      await react("❌");
+      return reply(`❌ Failed to post group status: ${err.message}`);
+    }
+  }
 );

@@ -1,209 +1,133 @@
+
 const {
-    gmd,
-    gitRepoRegex,
-    MAX_MEDIA_SIZE,
-    getFileSize,
-    getMimeCategory,
-    getMimeFromUrl,
-} = require("../kevo");
-
-const GIFTED_DLS = require("gifted-dls");
-const giftedDls = new GIFTED_DLS();
-const axios = require("axios");
-const { sendButtons } = require("gifted-btns");
-
-const BOT_NAME = "MNYANDWA-MD";
+        gmd,
+        gitRepoRegex,
+        MAX_MEDIA_SIZE,
+        getFileSize,
+        getMimeCategory,
+        getMimeFromUrl,
+    } = require("../luka"),
+    GIFTED_DLS = require("gifted-dls"),
+    guruDls = new GIFTED_DLS(),
+    axios = require("axios"),
+    { sendButtons } = require("gifted-btns");
 
 function extractButtonId(msg) {
     if (!msg) return null;
-
     if (msg.templateButtonReplyMessage?.selectedId)
         return msg.templateButtonReplyMessage.selectedId;
-
     if (msg.buttonsResponseMessage?.selectedButtonId)
         return msg.buttonsResponseMessage.selectedButtonId;
-
     if (msg.listResponseMessage?.singleSelectReply?.selectedRowId)
         return msg.listResponseMessage.singleSelectReply.selectedRowId;
-
     if (msg.interactiveResponseMessage) {
-        const native =
-            msg.interactiveResponseMessage.nativeFlowResponseMessage;
-
-        if (native?.paramsJson) {
-            try {
-                const data = JSON.parse(native.paramsJson);
-                if (data.id) return data.id;
-            } catch {}
+        const nf = msg.interactiveResponseMessage.nativeFlowResponseMessage;
+        if (nf?.paramsJson) {
+            try { const p = JSON.parse(nf.paramsJson); if (p.id) return p.id; } catch {}
         }
-
         return msg.interactiveResponseMessage.buttonId || null;
     }
-
     return null;
 }
 
-function cleanName(name = "file") {
-    return name.replace(/[^\w\s.-]/gi, "");
-}
-
-function downloadBox(title, body) {
-    return `
-╭━━━〔 ${BOT_NAME} ⚡ 〕━━━╮
-┃ 📥 ${title}
-┃
-${body}
-╰━━━━━━━━━━━━━━━━━━╯
-`;
-}
-
-
-// ===============================
-//        GITHUB DOWNLOADER
-// ===============================
-
 gmd(
-{
-    pattern: "gitclone",
-    category: "downloader",
-    react: "📦",
-    aliases: [
-        "gitdl",
-        "github",
-        "git",
-        "clone"
-    ],
-    description: "Download Github repository"
-},
+    {
+        pattern: "gitclone",
+        category: "downloader",
+        react: "📦",
+        aliases: ["gitdl", "github", "git", "repodl", "clone"],
+        description: "Download GitHub repository as zip file",
+    },
+    async (from, Guru, conText) => {
+        const { q, mek, reply, react, sender, botName, newsletterJid } =
+            conText;
 
-async (from, Gifted, conText)=>{
+        if (!q) {
+            await react("❌");
+            return reply(
+                `Please provide a GitHub repository link.\n\n*Usage:* .gitclone https://github.com/user/repo`,
+            );
+        }
 
-const {
-    q,
-    mek,
-    reply,
-    react,
-    botName,
-    newsletterJid
-}=conText;
+        if (!gitRepoRegex.test(q)) {
+            await react("❌");
+            return reply(
+                "Invalid GitHub link format. Please provide a valid GitHub repository URL.",
+            );
+        }
 
+        try {
+            let [, user, repo] = q.match(gitRepoRegex) || [];
+            repo = repo.replace(/\.git$/, "").split("/")[0];
 
-if(!q){
-    await react("❌");
-    return reply(
-`${downloadBox(
-"GitHub Downloader",
-`
-┃ 🔗 Weka Github link
+            const apiUrl = `https://api.github.com/repos/${user}/${repo}`;
+            const zipUrl = `https://api.github.com/repos/${user}/${repo}/zipball`;
 
-Example:
-.gitclone https://github.com/user/repo
-`
-)}`
-);
-}
+            await reply(`Fetching repository *${user}/${repo}*...`);
 
+            const repoResponse = await axios.get(apiUrl);
+            if (!repoResponse.data) {
+                await react("❌");
+                return reply(
+                    "Repository not found or access denied. Make sure the repository is public.",
+                );
+            }
 
-if(!gitRepoRegex.test(q)){
-    await react("❌");
-    return reply(
-`${downloadBox(
-"Invalid Link",
-"┃ ❌ Github link sio sahihi"
-)}`
-);
-}
+            const repoData = repoResponse.data;
+            const defaultBranch = repoData.default_branch || "main";
+            const filename = `${user}-${repo}-${defaultBranch}.zip`;
 
+            await Guru.sendMessage(
+                from,
+                {
+                    document: { url: zipUrl },
+                    fileName: filename,
+                    mimetype: "application/zip",
+                    contextInfo: {
+                        forwardingScore: 1,
+                        isForwarded: true,
+                        forwardedNewsletterMessageInfo: {
+                            newsletterJid: newsletterJid,
+                            newsletterName: botName,
+                            serverMessageId: 143,
+                        },
+                    },
+                },
+                { quoted: mek },
+            );
 
-try{
+            await react("✅");
+        } catch (error) {
+            console.error("GitClone error:", error);
+            await react("❌");
 
-let [,user,repo]=q.match(gitRepoRegex)||[];
-
-repo = repo.replace(".git","")
-.split("/")[0];
-
-
-const info =
-`╭━━〔 ${BOT_NAME} 〕━━╮
-
-📦 Repository:
-${user}/${repo}
-
-⏳ Preparing download...
-
-╰━━━━━━━━━━━━━━╯`;
-
-await reply(info);
-
-
-const api =
-`https://api.github.com/repos/${user}/${repo}`;
-
-
-const check =
-await axios.get(api);
-
-
-if(!check.data){
-
-await react("❌");
-return reply("Repository haipo au ni private.");
-}
-
-
-const branch =
-check.data.default_branch || "main";
-
-
-const zip =
-`https://api.github.com/repos/${user}/${repo}/zipball`;
-
-
-await Gifted.sendMessage(
-from,
-{
-document:{url:zip},
-fileName:
-`${user}-${repo}-${branch}.zip`,
-mimetype:"application/zip"
-},
-{
-quoted:mek
-});
-
-
-await react("✅");
-
-
-}catch(e){
-
-console.log(e);
-
-await react("❌");
-
-return reply(
-"Imeshindikana kupakua Github repo."
+            if (error.message?.includes("404")) {
+                return reply("Repository not found.");
+            } else if (error.message?.includes("rate limit")) {
+                return reply(
+                    "GitHub API rate limit exceeded. Please try again later.",
+                );
+            } else {
+                return reply(`Failed to download repository: ${error.message}`);
+            }
+        }
+    },
 );
 
+// ── Toxic-MD box formatter (shared across social downloaders) ─────────────────
+function toxicBox(title, lines, footer) {
+    return `╭─❏ 「 ${title} 」\n${lines.filter(Boolean).map(l => `│ ${l}`).join("\n")}\n╰───────────────────────────\n> _${footer}_`;
 }
-
-});// ===============================
-// MNYANDWA-MD DOWNLOADER ENGINE
-// PART 2
-// ===============================
-
 
 gmd(
     {
-        pattern: "tiktok",
+        pattern: "fb",
         category: "downloader",
-        react: "🎵",
-        aliases: ["tt", "ttdl", "tiktokdl"],
-        description: "Download TikTok videos without watermark",
+        react: "📘",
+        aliases: ["fbdl", "facebookdl", "facebook"],
+        description: "Download Facebook videos. Usage: .fb <Facebook URL>",
     },
-
-    async (from, Gifted, conText) => {
-
+    async (from, Guru, conText) => {
         const {
             q,
             mek,
@@ -213,2612 +137,437 @@ gmd(
             botFooter,
             gmdBuffer,
             toAudio,
-            GiftedTechApi,
-            GiftedApiKey,
-            MAX_MEDIA_SIZE
+            KoyotehApi,
+            GuruApiKey,
         } = conText;
-
 
         if (!q) {
             await react("❌");
-            return reply(
-                `╭━━━〔 ${botName} 〕━━━╮\n` +
-                `❌ Weka link ya TikTok\n\n` +
-                `Mfano:\n.tt https://tiktok.com/xxxx\n` +
-                `╰━━━━━━━━━━━━━━╯`
-            );
+            return reply(toxicBox("FACEBOOK DOWNLOADER", [
+                "⚠️ Send a Facebook video URL.",
+                "Example: .fb https://fb.watch/xxx",
+            ], botFooter));
         }
 
+        if (!q.includes("facebook.com") && !q.includes("fb.watch")) {
+            await react("❌");
+            return reply(toxicBox("FACEBOOK DOWNLOADER", ["❌ Invalid Facebook URL."], botFooter));
+        }
+
+        await react("⌛");
+        await reply(toxicBox("FACEBOOK DOWNLOADER", ["⬇️ Fetching video..."], botFooter));
+
+        try {
+            let videoUrl = null, title = "Facebook Video", thumbnail = null;
+
+            // Toxic-MD API: nexray
+            try {
+                const r = await axios.get(
+                    `https://api.nexray.web.id/downloader/facebook?url=${encodeURIComponent(q)}`,
+                    { headers: { "User-Agent": "Mozilla/5.0" }, timeout: 20000 }
+                );
+                const d = r.data?.result;
+                if (d?.url) { videoUrl = d.url; title = d.title || title; thumbnail = d.thumbnail || null; }
+            } catch (_) {}
+
+            // Fallback: Koyoteh
+            if (!videoUrl) {
+                try {
+                    const r = await axios.get(
+                        `${KoyotehApi}/api/download/facebook?apikey=${GuruApiKey}&url=${encodeURIComponent(q)}`,
+                        { timeout: 15000 }
+                    );
+                    const d = r.data?.result;
+                    if (d?.hd_video || d?.sd_video) {
+                        videoUrl = d.hd_video || d.sd_video;
+                        title = d.title || title;
+                        thumbnail = d.thumbnail || null;
+                    }
+                } catch (_) {}
+            }
+
+            if (!videoUrl) {
+                await react("❌");
+                return reply(toxicBox("FACEBOOK DOWNLOADER", [
+                    "❌ Failed to download.",
+                    "Make sure the video is public.",
+                ], botFooter));
+            }
+
+            const fileSize = await getFileSize(videoUrl).catch(() => 0);
+            const msgOpts = { quoted: mek };
+
+            if (fileSize > MAX_MEDIA_SIZE) {
+                await Guru.sendMessage(from, {
+                    document: { url: videoUrl },
+                    fileName: `${title.replace(/[^\w\s.-]/gi, "")}.mp4`,
+                    mimetype: "video/mp4",
+                    caption: toxicBox("FACEBOOK DOWNLOADER", [
+                        `🎬 ${title}`,
+                    ], botFooter),
+                }, msgOpts);
+            } else {
+                await Guru.sendMessage(from, {
+                    video: { url: videoUrl },
+                    mimetype: "video/mp4",
+                    caption: toxicBox("FACEBOOK DOWNLOADER", [
+                        `🎬 ${title}`,
+                    ], botFooter),
+                }, msgOpts);
+            }
+            await react("✅");
+        } catch (err) {
+            console.error("Facebook error:", err);
+            await react("❌");
+            return reply(toxicBox("FACEBOOK DOWNLOADER", [`❌ Error: ${err.message}`], botFooter));
+        }
+    },
+);
+
+gmd(
+    {
+        pattern: "tiktok",
+        category: "downloader",
+        react: "🎵",
+        aliases: ["tiktokdl", "ttdl", "tt"],
+        description: "Download TikTok videos/audio. Usage: .tiktok <TikTok URL>",
+    },
+    async (from, Guru, conText) => {
+        const { q, mek, reply, react, botFooter, gmdBuffer, toAudio, formatAudio, KoyotehApi, GuruApiKey } = conText;
+
+        if (!q) {
+            await react("❌");
+            return reply(toxicBox("TIKTOK DOWNLOADER", [
+                "⚠️ Send a TikTok URL.",
+                "Example: .tiktok https://vm.tiktok.com/xxx",
+            ], botFooter));
+        }
 
         if (!q.includes("tiktok.com")) {
             await react("❌");
-            return reply("❌ Hii sio link ya TikTok");
+            return reply(toxicBox("TIKTOK DOWNLOADER", ["❌ Invalid TikTok URL."], botFooter));
         }
 
+        await react("⌛");
+        await reply(toxicBox("TIKTOK DOWNLOADER", ["⬇️ Fetching TikTok..."], botFooter));
 
         try {
+            let result = null;
 
-            const api = `${GiftedTechApi}/api/download/tiktokdlv2?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
+            // Toxic-MD primary: nexray
+            try {
+                const r = await axios.get(
+                    `https://api.nexray.web.id/downloader/tiktok?url=${encodeURIComponent(q)}`,
+                    { headers: { "User-Agent": "Mozilla/5.0" }, timeout: 20000 }
+                );
+                const d = r.data?.result;
+                if (d?.video) result = { video: d.video, music: d.music, title: d.title || "TikTok Video", author: d.author?.nickname || "Unknown", cover: d.cover || null };
+            } catch (_) {}
 
-            const res = await axios.get(api,{
-                timeout:60000
-            });
-
-
-            if(!res.data?.success || !res.data?.result){
-
-                await react("❌");
-                return reply("TikTok haijapatikana");
-
+            // Fallback: tikwm
+            if (!result) {
+                try {
+                    const r = await axios.get(`https://www.tikwm.com/api/?url=${encodeURIComponent(q)}`, { timeout: 15000 });
+                    if (r.data?.code === 0 && r.data?.data) {
+                        const d = r.data.data;
+                        result = { video: d.play || d.wmplay, music: d.music, title: d.title || "TikTok Video", author: d.author?.nickname || "Unknown", cover: d.cover || null };
+                    }
+                } catch (_) {}
             }
 
-
-            const data = res.data.result;
-
-
-            const video = data.video || data.download_url;
-            const music = data.music;
-
-
-            const title =
-            data.title ||
-            "TikTok Video";
-
-
-            const author =
-            data.author?.name ||
-            "Unknown";
-
-
-            const id = Date.now();
-
-
-
-            await sendButtons(Gifted,from,{
-
-                title:`${botName} 🎵 TIKTOK`,
-
-                text:
-`╭━━〔 TIKTOK DOWNLOADER 〕━━╮
-
-🎬 Title:
-${title}
-
-👤 Creator:
-${author}
-
-Chagua unachotaka 👇
-
-╰━━━━━━━━━━━━━━╯`,
-
-                footer:botFooter,
-
-                buttons:[
-
-                    {
-                        id:`ttv_${id}`,
-                        text:"🎬 Video"
-                    },
-
-                    {
-                        id:`tta_${id}`,
-                        text:"🎧 Audio"
-                    }
-
-                ]
-
-            });
-
-
-
-            const listener = async(event)=>{
-
-
-                const msg = event.messages[0];
-
-                if(!msg.message)return;
-
-
-                const btn =
-                extractButtonId(msg.message);
-
-
-                if(!btn)return;
-
-
-                if(!btn.includes(id))return;
-
-
-                if(msg.key.remoteJid !== from)return;
-
-
-
-                await react("⬇️");
-
-
-
-                try{
-
-
-                    if(btn.startsWith("ttv")){
-
-
-                        await Gifted.sendMessage(
-                            from,
-                            {
-                                video:{
-                                    url:video
-                                },
-
-                                mimetype:"video/mp4",
-
-                                caption:
-`Downloaded by ${botName}`
-                            },
-
-                            {
-                                quoted:msg
-                            }
-                        );
-
-
-                    }
-
-
-
-                    else if(btn.startsWith("tta")){
-
-
-                        let audio;
-
-
-                        if(music){
-
-                            audio =
-                            await gmdBuffer(music);
-
-                        }
-
-                        else{
-
-                            const buff =
-                            await gmdBuffer(video);
-
-                            audio =
-                            await toAudio(buff);
-
-                        }
-
-
-
-                        await Gifted.sendMessage(
-                            from,
-                            {
-
-                                audio:audio,
-
-                                mimetype:
-                                "audio/mpeg"
-
-                            },
-
-                            {
-                                quoted:msg
-                            }
-                        );
-
-
-                    }
-
-
-
-                    await react("✅");
-
-
+            // Fallback: Koyoteh
+            if (!result) {
+                for (const ep of ["tiktok", "tiktokdlv2", "tiktokdlv3"]) {
+                    try {
+                        const r = await axios.get(`${KoyotehApi}/api/download/${ep}?apikey=${GuruApiKey}&url=${encodeURIComponent(q)}`, { timeout: 15000 });
+                        if (r.data?.success && r.data?.result) { result = r.data.result; break; }
+                    } catch (_) {}
                 }
+            }
 
-                catch(e){
+            if (!result?.video) {
+                await react("❌");
+                return reply(toxicBox("TIKTOK DOWNLOADER", ["❌ Failed to download. Try again."], botFooter));
+            }
 
-                    console.log(e);
+            const { video, music, title, author, cover } = result;
 
-                    await react("❌");
+            // Send video
+            const fileSize = await getFileSize(video).catch(() => 0);
+            await Guru.sendMessage(from, {
+                ...(fileSize > MAX_MEDIA_SIZE
+                    ? { document: { url: video }, fileName: `${(title).replace(/[^\w\s.-]/gi, "")}.mp4`, mimetype: "video/mp4" }
+                    : { video: { url: video }, mimetype: "video/mp4" }),
+                caption: toxicBox("TIKTOK DOWNLOADER", [
+                    `🎵 ${title}`,
+                    `👤 @${author}`,
+                ], botFooter),
+            }, { quoted: mek });
 
-                    reply(
-                    "Imeshindikana kupakua.",
-                    msg
-                    );
+            // Send music as audio too
+            if (music) {
+                try {
+                    await Guru.sendMessage(from, {
+                        audio: { url: music },
+                        mimetype: "audio/mpeg",
+                        ptt: false,
+                        fileName: `${(title).replace(/[^\w\s.-]/gi, "")}_music.mp3`,
+                    }, { quoted: mek });
+                } catch (_) {}
+            }
 
-                }
-
-
-            };
-
-
-
-            Gifted.ev.on(
-                "messages.upsert",
-                listener
-            );
-
-
-            setTimeout(()=>{
-
-                Gifted.ev.off(
-                    "messages.upsert",
-                    listener
-                );
-
-            },300000);
-
-
-
-        }
-
-        catch(err){
-
-            console.log(err);
-
+            await react("✅");
+        } catch (err) {
+            console.error("TikTok error:", err);
             await react("❌");
+            return reply(toxicBox("TIKTOK DOWNLOADER", [`❌ Error: ${err.message}`], botFooter));
+        }
+    },
+);
 
-            reply(
-            "Server imekataa, jaribu tena."
-            );
+gmd(
+    {
+        pattern: "twitter",
+        category: "downloader",
+        react: "🐦",
+        aliases: ["twitterdl", "xdl", "xdownloader", "twitterdownloader", "x"],
+        description: "Download Twitter/X videos. Usage: .twitter <tweet URL>",
+    },
+    async (from, Guru, conText) => {
+        const { q, mek, reply, react, botFooter, KoyotehApi, GuruApiKey } = conText;
 
+        if (!q) {
+            await react("❌");
+            return reply(toxicBox("TWITTER/X DOWNLOADER", [
+                "⚠️ Send a Twitter/X URL.",
+                "Example: .twitter https://x.com/user/status/xxx",
+            ], botFooter));
         }
 
-    }
+        if (!q.includes("twitter.com") && !q.includes("x.com")) {
+            await react("❌");
+            return reply(toxicBox("TWITTER/X DOWNLOADER", ["❌ Invalid Twitter/X URL."], botFooter));
+        }
 
-);// ===============================
-// MNYANDWA-MD DOWNLOADER ENGINE
-// PART 3
-// INSTAGRAM DOWNLOADER
-// ===============================
+        await react("⌛");
+        await reply(toxicBox("TWITTER/X DOWNLOADER", ["⬇️ Fetching tweet video..."], botFooter));
 
+        try {
+            let videoUrl = null;
+
+            // Toxic-MD API: nexray
+            try {
+                const r = await axios.get(
+                    `https://api.nexray.web.id/downloader/twitter?url=${encodeURIComponent(q)}`,
+                    { headers: { "User-Agent": "Mozilla/5.0" }, timeout: 20000 }
+                );
+                const d = r.data?.result;
+                const urls = d?.videoUrls || d?.urls || (d?.url ? [{ url: d.url }] : null);
+                if (urls?.length) videoUrl = urls[0].url;
+            } catch (_) {}
+
+            // Fallback: Koyoteh
+            if (!videoUrl) {
+                try {
+                    const r = await axios.get(
+                        `${KoyotehApi}/api/download/twitter?apikey=${GuruApiKey}&url=${encodeURIComponent(q)}`,
+                        { timeout: 15000 }
+                    );
+                    const d = r.data?.result;
+                    if (d?.videoUrls?.length) videoUrl = d.videoUrls[0].url;
+                } catch (_) {}
+            }
+
+            if (!videoUrl) {
+                await react("❌");
+                return reply(toxicBox("TWITTER/X DOWNLOADER", [
+                    "❌ No video found.",
+                    "Make sure the tweet has a video and is public.",
+                ], botFooter));
+            }
+
+            const fileSize = await getFileSize(videoUrl).catch(() => 0);
+            await Guru.sendMessage(from, {
+                ...(fileSize > MAX_MEDIA_SIZE
+                    ? { document: { url: videoUrl }, fileName: "twitter_video.mp4", mimetype: "video/mp4" }
+                    : { video: { url: videoUrl }, mimetype: "video/mp4" }),
+                caption: toxicBox("TWITTER/X DOWNLOADER", ["🐦 Here's your video!"], botFooter),
+            }, { quoted: mek });
+
+            await react("✅");
+        } catch (err) {
+            console.error("Twitter error:", err);
+            await react("❌");
+            return reply(toxicBox("TWITTER/X DOWNLOADER", [`❌ Error: ${err.message}`], botFooter));
+        }
+    },
+);
 
 gmd(
-{
-    pattern:"ig",
-    category:"downloader",
-    react:"📸",
-    aliases:[
-        "instagram",
-        "instadl",
-        "igdl",
-        "reels"
-    ],
-    description:"Download Instagram reels and videos"
-},
+    {
+        pattern: "ig",
+        category: "downloader",
+        react: "📸",
+        aliases: ["insta", "instadl", "igdl", "instagram"],
+        description: "Download Instagram reels/videos/images. Usage: .ig <Instagram URL>",
+    },
+    async (from, Guru, conText) => {
+        const { q, mek, reply, react, botFooter, KoyotehApi, GuruApiKey } = conText;
 
-async(from,Gifted,conText)=>{
+        if (!q) {
+            await react("❌");
+            return reply(toxicBox("INSTAGRAM DOWNLOADER", [
+                "⚠️ Send an Instagram URL.",
+                "Example: .ig https://www.instagram.com/reel/xxx",
+            ], botFooter));
+        }
 
+        if (!q.includes("instagram.com")) {
+            await react("❌");
+            return reply(toxicBox("INSTAGRAM DOWNLOADER", ["❌ Invalid Instagram URL."], botFooter));
+        }
 
-const {
-    q,
-    mek,
-    reply,
-    react,
-    botName,
-    botFooter,
-    gmdBuffer,
-    toAudio,
-    GiftedTechApi,
-    GiftedApiKey
-}=conText;
+        await react("⌛");
+        await reply(toxicBox("INSTAGRAM DOWNLOADER", ["⬇️ Fetching Instagram..."], botFooter));
 
+        try {
+            let mediaUrl = null, isVideo = true, caption = "";
 
+            // Toxic-MD primary: nexray v2
+            try {
+                const r = await axios.get(
+                    `https://api.nexray.web.id/downloader/v2/instagram?url=${encodeURIComponent(q)}`,
+                    { headers: { "User-Agent": "Mozilla/5.0" }, timeout: 20000 }
+                );
+                const d = r.data?.result;
+                if (Array.isArray(d) && d.length) {
+                    mediaUrl = d[0]?.url || d[0]?.video || d[0]?.image;
+                    isVideo = !!(d[0]?.video || d[0]?.type === "video");
+                } else if (d?.url) {
+                    mediaUrl = d.url;
+                    isVideo = d.type === "video";
+                    caption = d.caption || "";
+                }
+            } catch (_) {}
 
-if(!q){
+            // Fallback: nexray v1
+            if (!mediaUrl) {
+                try {
+                    const r = await axios.get(
+                        `https://api.nexray.web.id/downloader/instagram?url=${encodeURIComponent(q)}`,
+                        { headers: { "User-Agent": "Mozilla/5.0" }, timeout: 20000 }
+                    );
+                    const d = r.data?.result;
+                    if (d?.url) { mediaUrl = d.url; isVideo = d.type !== "image"; caption = d.caption || ""; }
+                } catch (_) {}
+            }
 
-    await react("❌");
+            // Fallback: Koyoteh
+            if (!mediaUrl) {
+                try {
+                    const r = await axios.get(
+                        `${KoyotehApi}/api/download/instadl?apikey=${GuruApiKey}&url=${encodeURIComponent(q)}`,
+                        { timeout: 15000 }
+                    );
+                    const d = r.data?.result;
+                    if (d?.download_url) { mediaUrl = d.download_url; isVideo = true; }
+                } catch (_) {}
+            }
 
-    return reply(
-`╭━━〔 ${botName} 〕━━╮
+            if (!mediaUrl) {
+                await react("❌");
+                return reply(toxicBox("INSTAGRAM DOWNLOADER", [
+                    "❌ Failed to download.",
+                    "Make sure the post is public.",
+                ], botFooter));
+            }
 
-📸 Weka Instagram link
+            const boxCaption = toxicBox("INSTAGRAM DOWNLOADER", [
+                caption ? `📝 ${caption.substring(0, 80)}${caption.length > 80 ? "..." : ""}` : "📸 Instagram Media",
+            ], botFooter);
 
-Mfano:
-.ig https://instagram.com/reel/xxxx
+            const fileSize = await getFileSize(mediaUrl).catch(() => 0);
 
-╰━━━━━━━━━━━━╯`
-    );
+            if (isVideo) {
+                await Guru.sendMessage(from, {
+                    ...(fileSize > MAX_MEDIA_SIZE
+                        ? { document: { url: mediaUrl }, fileName: "instagram_video.mp4", mimetype: "video/mp4" }
+                        : { video: { url: mediaUrl }, mimetype: "video/mp4" }),
+                    caption: boxCaption,
+                }, { quoted: mek });
+            } else {
+                await Guru.sendMessage(from, {
+                    image: { url: mediaUrl },
+                    caption: boxCaption,
+                }, { quoted: mek });
+            }
 
-}
-
-
-
-if(!q.includes("instagram.com")){
-
-    await react("❌");
-
-    return reply(
-    "❌ Hii sio link ya Instagram"
-    );
-
-}
-
-
-
-try{
-
-
-const url =
-`${GiftedTechApi}/api/download/instadl?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-
-
-
-const res =
-await axios.get(url,{
-    timeout:60000
-});
-
-
-
-if(!res.data?.success ||
-!res.data?.result){
-
-
-await react("❌");
-
-return reply(
-"Instagram media haijapatikana"
+            await react("✅");
+        } catch (err) {
+            console.error("Instagram error:", err);
+            await react("❌");
+            return reply(toxicBox("INSTAGRAM DOWNLOADER", [`❌ Error: ${err.message}`], botFooter));
+        }
+    },
 );
-
-
-}
-
-
-
-const data =
-res.data.result;
-
-
-
-const media =
-data.download_url ||
-data.url;
-
-
-
-const thumb =
-data.thumbnail;
-
-
-
-const title =
-data.title ||
-"Instagram Video";
-
-
-
-const id =
-Date.now();
-
-
-
-
-await sendButtons(
-Gifted,
-from,
-{
-
-title:
-`${botName} 📸 INSTAGRAM`,
-
-
-text:
-`╭━━〔 INSTAGRAM DOWNLOADER 〕━━╮
-
-🎬 ${title}
-
-Chagua aina ya download 👇
-
-╰━━━━━━━━━━━━━━━━╯`,
-
-
-footer:
-botFooter,
-
-
-image:{
-url:thumb
-},
-
-
-buttons:[
-
-{
-id:`igv_${id}`,
-text:"🎬 Video"
-},
-
-{
-id:`iga_${id}`,
-text:"🎧 Audio"
-}
-
-]
-
-}
-);
-
-
-
-
-
-const handler =
-async(event)=>{
-
-
-const msg =
-event.messages[0];
-
-
-if(!msg.message)return;
-
-
-
-const button =
-extractButtonId(msg.message);
-
-
-
-if(!button)return;
-
-
-
-if(!button.includes(id))
-return;
-
-
-
-if(msg.key.remoteJid!==from)
-return;
-
-
-
-await react("⬇️");
-
-
-
-try{
-
-
-if(button.startsWith("igv")){
-
-
-await Gifted.sendMessage(
-from,
-{
-
-video:{
-url:media
-},
-
-mimetype:
-"video/mp4",
-
-caption:
-`Downloaded by ${botName}`
-
-},
-
-{
-quoted:msg
-}
-);
-
-
-}
-
-
-
-if(button.startsWith("iga")){
-
-
-const video =
-await gmdBuffer(media);
-
-
-
-const audio =
-await toAudio(video);
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-audio:audio,
-
-mimetype:
-"audio/mpeg"
-
-},
-
-{
-quoted:msg
-}
-);
-
-
-
-}
-
-
-
-await react("✅");
-
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-await react("❌");
-
-reply(
-"Download imegoma.",
-msg
-);
-
-}
-
-
-
-};
-
-
-
-Gifted.ev.on(
-"messages.upsert",
-handler
-);
-
-
-
-setTimeout(()=>{
-
-
-Gifted.ev.off(
-"messages.upsert",
-handler
-);
-
-
-},300000);
-
-
-
-}
-
-catch(e){
-
-
-console.log(e);
-
-
-await react("❌");
-
-
-reply(
-"Server error, jaribu tena."
-);
-
-
-}
-
-
-
-}
-
-);// ===============================
-// MNYANDWA-MD DOWNLOADER ENGINE
-// PART 4
-// FACEBOOK + TWITTER DOWNLOADER
-// ===============================
-
-
-// ===============================
-// FACEBOOK DOWNLOADER
-// ===============================
 
 gmd(
-{
-    pattern:"fb",
-    category:"downloader",
-    react:"📘",
-    aliases:[
-        "facebook",
-        "fbdl"
-    ],
-    description:"Download Facebook videos"
-},
-
-async(from,Gifted,conText)=>{
-
-
-const {
-q,
-mek,
-reply,
-react,
-botName,
-botFooter,
-GiftedTechApi,
-GiftedApiKey
-}=conText;
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-"📘 Weka Facebook video link"
-);
-
-}
-
-
-
-if(!q.includes("facebook.com") &&
-!q.includes("fb.watch")){
-
-await react("❌");
-
-return reply(
-"❌ Link sio ya Facebook"
-);
-
-}
-
-
-
-try{
-
-
-const api =
-`${GiftedTechApi}/api/download/facebook?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-
-
-
-const res =
-await axios.get(api,{
-timeout:60000
-});
-
-
-
-if(!res.data?.success){
-
-await react("❌");
-
-return reply(
-"Video haijapatikana"
-);
-
-}
-
-
-
-const data =
-res.data.result;
-
-
-
-const video =
-data.hd_video ||
-data.sd_video;
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-video:{
-url:video
-},
-
-mimetype:
-"video/mp4",
-
-caption:
-`╭━━〔 ${botName} 〕━━╮
-
-📘 Facebook Downloader
-
-${data.title || "Facebook Video"}
-
-╰━━━━━━━━━━━━╯`
-
-},
-
-{
-quoted:mek
-}
-);
-
-
-
-await react("✅");
-
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-await react("❌");
-
-reply(
-"Facebook download error"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-// ===============================
-// TWITTER / X DOWNLOADER
-// ===============================
-
-
-gmd(
-{
-pattern:"twitter",
-category:"downloader",
-react:"🐦",
-
-aliases:[
-"x",
-"xdl",
-"twitterdl"
-],
-
-description:"Download Twitter/X videos"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-q,
-mek,
-reply,
-react,
-botName,
-GiftedTechApi,
-GiftedApiKey
-
-}=conText;
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-"Weka Twitter/X link"
-);
-
-}
-
-
-
-if(!q.includes("twitter.com") &&
-!q.includes("x.com")){
-
-await react("❌");
-
-return reply(
-"❌ Hii sio Twitter/X link"
-);
-
-}
-
-
-
-try{
-
-
-const api =
-`${GiftedTechApi}/api/download/twitter?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-
-
-
-const res =
-await axios.get(api,{
-timeout:60000
-});
-
-
-
-if(!res.data?.success){
-
-await react("❌");
-
-return reply(
-"Video haijapatikana"
-);
-
-}
-
-
-
-const data =
-res.data.result;
-
-
-
-const video =
-data.videoUrls?.[0]?.url;
-
-
-
-if(!video){
-
-await react("❌");
-
-return reply(
-"No video found"
-);
-
-}
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-video:{
-url:video
-},
-
-mimetype:
-"video/mp4",
-
-caption:
-`🐦 Twitter/X Downloader
-
-Powered by ${botName}`
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-
-await react("✅");
-
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-await react("❌");
-
-reply(
-"Twitter download error"
-);
-
-
-}
-
-
-}
-
-);// ===============================
-// MNYANDWA-MD DOWNLOADER ENGINE
-// PART 5
-// YOUTUBE + SPOTIFY
-// ===============================
-
-
-
-// ===============================
-// YOUTUBE DOWNLOADER
-// ===============================
-
-
-gmd(
-{
-    pattern:"ytv",
-    category:"downloader",
-    react:"▶️",
-
-    aliases:[
-        "youtube",
-        "ytvideo",
-        "ytmp4"
-    ],
-
-    description:"Download YouTube videos"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-q,
-mek,
-reply,
-react,
-botName,
-GiftedTechApi,
-GiftedApiKey
-
-}=conText;
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-`▶️ Weka YouTube link
-
-Mfano:
-.ytv https://youtube.com/watch?v=xxxx`
-);
-
-}
-
-
-
-
-if(!q.includes("youtube.com") &&
-!q.includes("youtu.be")){
-
-await react("❌");
-
-return reply(
-"❌ Hii sio YouTube link"
-);
-
-}
-
-
-
-try{
-
-
-const api =
-`${GiftedTechApi}/api/download/youtube?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-
-
-
-const res =
-await axios.get(api,{
-timeout:60000
-});
-
-
-
-if(!res.data?.success){
-
-await react("❌");
-
-return reply(
-"YouTube video haijapatikana"
-);
-
-}
-
-
-
-const data =
-res.data.result;
-
-
-
-const video =
-data.download_url ||
-data.video;
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-video:{
-url:video
-},
-
-mimetype:
-"video/mp4",
-
-caption:
-
-`╭━━〔 ${botName} 〕━━╮
-
-▶️ YouTube Downloader
-
-🎬 ${data.title || "Video"}
-
-╰━━━━━━━━━━━━╯`
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-
-await react("✅");
-
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-await react("❌");
-
-reply(
-"YouTube error"
-);
-
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-// ===============================
-// SPOTIFY DOWNLOADER
-// ===============================
-
-
-gmd(
-{
-pattern:"spotify",
-
-category:"downloader",
-
-react:"🎧",
-
-aliases:[
-"spoti",
-"spotifydl"
-],
-
-description:"Download Spotify music"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-q,
-mek,
-reply,
-react,
-botName,
-GiftedTechApi,
-GiftedApiKey,
-formatAudio,
-gmdBuffer
-
-}=conText;
-
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-"🎧 Weka Spotify link au jina la wimbo"
-);
-
-}
-
-
-
-try{
-
-
-const api =
-`${GiftedTechApi}/api/download/spotifydl?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-
-
-
-const res =
-await axios.get(api,{
-timeout:60000
-});
-
-
-
-if(!res.data?.success){
-
-await react("❌");
-
-return reply(
-"Spotify haijapatikana"
-);
-
-}
-
-
-
-const data =
-res.data.result;
-
-
-
-const audioUrl =
-data.download_url;
-
-
-
-const buffer =
-await gmdBuffer(audioUrl);
-
-
-
-const audio =
-await formatAudio(buffer);
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-audio:audio,
-
-mimetype:
-"audio/mpeg",
-
-caption:
-`🎧 ${data.title || "Spotify Song"}
-
-Powered by ${botName}`
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-
-await react("✅");
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-await react("❌");
-
-reply(
-"Spotify download error"
-);
-
-
-}
-
-
-}
-// ===============================
-// MNYANDWA-MD DOWNLOADER ENGINE
-// PART 6
-// GDRIVE + MEDIAFIRE + APK
-// ===============================
-
-
-
-// ===============================
-// GOOGLE DRIVE DOWNLOADER
-// ===============================
-
-
-gmd(
-{
-pattern:"gdrive",
-category:"downloader",
-react:"📁",
-
-aliases:[
-"drive",
-"googledrive",
-"gdrivedl"
-],
-
-description:"Download Google Drive files"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-q,
-mek,
-reply,
-react,
-botName,
-GiftedTechApi,
-GiftedApiKey
-
-}=conText;
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-"📁 Weka Google Drive link"
-);
-
-}
-
-
-
-if(!q.includes("drive.google.com")){
-
-await react("❌");
-
-return reply(
-"❌ Link sio Google Drive"
-);
-
-}
-
-
-
-try{
-
-
-const api =
-`${GiftedTechApi}/api/download/gdrivedl?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-
-
-
-const res =
-await axios.get(api,{
-timeout:60000
-});
-
-
-
-if(!res.data?.success){
-
-await react("❌");
-
-return reply(
-"File haijapatikana"
-);
-
-}
-
-
-
-const data =
-res.data.result;
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-document:{
-url:data.download_url
-},
-
-fileName:
-data.name || "drive_file",
-
-mimetype:
-"application/octet-stream",
-
-caption:
-`📁 Google Drive
-
-Powered by ${botName}`
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-
-await react("✅");
-
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-await react("❌");
-
-reply(
-"GDrive error"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-// ===============================
-// MEDIAFIRE DOWNLOADER
-// ===============================
-
-
-gmd(
-{
-pattern:"mediafire",
-
-category:"downloader",
-
-react:"🔥",
-
-aliases:[
-"mfire",
-"mf"
-],
-
-description:"Download MediaFire files"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-q,
-mek,
-reply,
-react,
-botName,
-GiftedTechApi,
-GiftedApiKey
-
-}=conText;
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-"🔥 Weka MediaFire link"
-);
-
-}
-
-
-
-if(!q.includes("mediafire.com")){
-
-await react("❌");
-
-return reply(
-"❌ Hii sio MediaFire"
-);
-
-}
-
-
-
-try{
-
-
-const api =
-`${GiftedTechApi}/api/download/mediafire?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-
-
-
-const res =
-await axios.get(api,{
-timeout:60000
-});
-
-
-
-if(!res.data?.success){
-
-await react("❌");
-
-return reply(
-"File haijapatikana"
-);
-
-}
-
-
-
-const data =
-res.data.result;
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-document:{
-url:data.downloadUrl
-},
-
-fileName:
-data.fileName || "mediafire_file",
-
-mimetype:
-"application/octet-stream",
-
-caption:
-`🔥 MediaFire Downloader
-
-${data.fileName || ""}
-
-${botName}`
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-
-await react("✅");
-
-
-
-}
-
-catch(e){
-
-console
-);// ===============================
-// MNYANDWA-MD DOWNLOADER ENGINE
-// PART 7
-// GITHUB + PASTEBIN
-// ===============================
-
-
-
-// ===============================
-// GITHUB REPOSITORY DOWNLOADER
-// ===============================
-
-
-gmd(
-{
-    pattern:"gitclone",
-
-    category:"downloader",
-
-    react:"📦",
-
-    aliases:[
-        "git",
-        "github",
-        "repodl"
-    ],
-
-    description:"Download Github repository"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-q,
-mek,
-reply,
-react,
-botName
-
-}=conText;
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-`📦 Weka Github link
-
-Mfano:
-.gitclone https://github.com/user/repo`
-);
-
-}
-
-
-
-if(!q.includes("github.com")){
-
-await react("❌");
-
-return reply(
-"❌ Hii sio Github link"
-);
-
-}
-
-
-
-try{
-
-
-let parts =
-q.split("/");
-
-
-let user =
-parts[3];
-
-
-let repo =
-parts[4]
-?.replace(".git","");
-
-
-
-if(!user || !repo){
-
-return reply(
-"Github link sio sahihi"
-);
-
-}
-
-
-
-const zip =
-`https://github.com/${user}/${repo}/archive/refs/heads/main.zip`;
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-document:{
-url:zip
-},
-
-fileName:
-`${repo}.zip`,
-
-mimetype:
-"application/zip",
-
-caption:
-
-`📦 Github Clone
-
-Repository:
-${user}/${repo}
-
-Powered by ${botName}`
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-
-await react("✅");
-
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-await react("❌");
-
-reply(
-"Github download error"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-
-// ===============================
-// PASTEBIN DOWNLOADER
-// ===============================
-
-
-gmd(
-{
-pattern:"pastebin",
-
-category:"downloader",
-
-react:"📋",
-
-aliases:[
-"paste",
-"pastedl"
-],
-
-description:"Get Pastebin content"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-q,
-mek,
-reply,
-react,
-botName,
-GiftedTechApi,
-GiftedApiKey
-
-}=conText;
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-"📋 Weka Pastebin link"
-);
-
-}
-
-
-
-if(!q.includes("pastebin.com")){
-
-await react("❌");
-
-return reply(
-"❌ Link sio Pastebin"
-);
-
-}
-
-
-
-try{
-
-
-const api =
-`${GiftedTechApi}/api/download/pastebin?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-
-
-
-const res =
-await axios.get(api,{
-timeout:30000
-});
-
-
-
-if(!res.data?.success){
-
-await react("❌");
-
-return reply(
-"Paste haijapatikana"
-);
-
-}
-
-
-
-let text =
-res.data.result;
-
-
-
-if(text.length > 60000){
-
-
-await Gifted.sendMessage(
-from,
-{
-
-document:
-Buffer.from(text),
-
-fileName:
-"pastebin.txt",
-
-mimetype:
-"text/plain"
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-}
-
-else{
-
-
-await Gifted.sendMessage(
-from,
-{
-
-text:
-
-`📋 ${botName} PASTEBIN
-
-━━━━━━━━━━━━
-
-${text}`
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-}
-
-
-
-await react("✅");
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-await react("❌");
-
-reply(
-"Pastebin error"
-);
-
-}
-
-
-}
-
-);// ===============================
-// MNYANDWA-MD DOWNLOADER ENGINE
-// PART 8
-// SOUNDCLOUD + PINTEREST + SNAPCHAT
-// ===============================
-
-
-
-// ===============================
-// SOUNDCLOUD DOWNLOADER
-// ===============================
-
-
-gmd(
-{
-    pattern:"soundcloud",
-    category:"downloader",
-    react:"🎶",
-
-    aliases:[
-        "sc",
-        "scdl",
-        "sounddl"
-    ],
-
-    description:"Download SoundCloud songs"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-q,
-mek,
-reply,
-react,
-botName,
-gmdBuffer,
-formatAudio,
-GiftedTechApi,
-GiftedApiKey
-
-}=conText;
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-"🎶 Weka SoundCloud link"
-);
-
-}
-
-
-
-try{
-
-
-const api =
-`${GiftedTechApi}/api/download/soundcloud?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-
-
-
-const res =
-await axios.get(api,{
-timeout:60000
-});
-
-
-
-if(!res.data?.success){
-
-await react("❌");
-
-return reply(
-"Wimbo haujapatikana"
-);
-
-}
-
-
-
-const data =
-res.data.result;
-
-
-
-const buffer =
-await gmdBuffer(data.download_url);
-
-
-
-const audio =
-await formatAudio(buffer);
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-audio:audio,
-
-mimetype:
-"audio/mpeg",
-
-caption:
-
-`🎶 SoundCloud
-
-${data.title || "Music"}
-
-Powered by ${botName}`
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-
-await react("✅");
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-await react("❌");
-
-reply(
-"SoundCloud error"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-// ===============================
-// PINTEREST DOWNLOADER
-// ===============================
-
-
-gmd(
-{
-pattern:"pinterest",
-
-category:"downloader",
-
-react:"📌",
-
-aliases:[
-"pin",
-"pindl"
-],
-
-description:"Download Pinterest media"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-q,
-mek,
-reply,
-react,
-botName,
-GiftedTechApi,
-GiftedApiKey
-
-}=conText;
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-"📌 Weka Pinterest link"
-);
-
-}
-
-
-
-if(!q.includes("pinterest")){
-
-await react("❌");
-
-return reply(
-"❌ Link sio Pinterest"
-);
-
-}
-
-
-
-try{
-
-
-const api =
-`${GiftedTechApi}/api/download/pinterest?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-
-
-
-const res =
-await axios.get(api,{
-timeout:60000
-});
-
-
-
-const data =
-res.data.result;
-
-
-
-const media =
-data.download_url ||
-data.url;
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-video:{
-url:media
-},
-
-caption:
-
-`📌 Pinterest Downloader
-
-Powered by ${botName}`
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-
-await react("✅");
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-await react("❌");
-
-reply(
-"Pinterest error"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-// ===============================
-// SNAPCHAT DOWNLOADER
-// ===============================
-
-
-gmd(
-{
-pattern:"snapchat",
-
-category:"downloader",
-
-react:"👻",
-
-aliases:[
-"snap",
-"snapdl"
-],
-
-description:"Download Snapchat videos"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-q,
-mek,
-reply,
-react,
-botName,
-GiftedTechApi,
-GiftedApiKey
-
-}=conText;
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-"👻 Weka Snapchat link"
-);
-
-}
-
-
-
-try{
-
-
-const api =
-`${GiftedTechApi}/api/download/snapchat?apikey=${GiftedApiKey}&url=${encodeURIComponent(q)}`;
-
-
-
-const res =
-await axios.get(api,{
-timeout:60000
-});
-
-
-
-if(!res.data?.success){
-
-await react("❌");
-
-return reply(
-"Snapchat video haijapatikana"
-);
-
-}
-
-
-
-const data =
-res.data.result;
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-video:{
-url:data.download_url
-},
-
-caption:
-
-`👻 Snapchat Downloader
-
-Powered by ${botName}`
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-
-await react("✅");
-
-
-}
-
-catch(e){
-
-console.log(e);
-
-await react("❌");
-
-reply(
-"Snapchat error"
-);
-
-}
-
-
-}
-
-);// ===============================
-// MNYANDWA-MD DOWNLOADER ENGINE
-// PART 9 FINAL
-// EXTRA TOOLS + BOT INFO
-// ===============================
-
-
-
-// ===============================
-// MEDIA INFO CHECK
-// ===============================
-
-
-gmd(
-{
-    pattern:"mediainfo",
-
-    category:"tools",
-
-    react:"🔎",
-
-    aliases:[
-        "urlinfo",
-        "checkurl"
-    ],
-
-    description:"Check media information"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-q,
-mek,
-reply,
-react,
-botName
-
-}=conText;
-
-
-
-if(!q){
-
-await react("❌");
-
-return reply(
-"🔎 Weka URL ya kuangalia"
-);
-
-}
-
-
-
-try{
-
-
-const response =
-await axios.head(q);
-
-
-
-const type =
-response.headers["content-type"] ||
-"Unknown";
-
-
-
-const size =
-response.headers["content-length"] || 
-"Unknown";
-
-
-
-await Gifted.sendMessage(
-from,
-{
-
-text:
-
-`╭━━〔 ${botName} 〕━━╮
-
-🔎 MEDIA INFO
-
-🌐 URL:
-${q}
-
-📂 Type:
-${type}
-
-📦 Size:
-${size}
-
-╰━━━━━━━━━━━━╯`
-
-},
-
-{
-quoted:mek
-}
-
-);
-
-
-
-await react("✅");
-
-
-}
-
-catch(e){
-
-await react("❌");
-
-reply(
-"Imeshindikana kupata taarifa"
-);
-
-}
-
-
-}
-
-);
-
-
-
-
-
-
-
-// ===============================
-// DOWNLOADER MENU
-// ===============================
-
-
-gmd(
-{
-pattern:"downloadmenu",
-
-category:"main",
-
-react:"📥",
-
-aliases:[
-"dlmenu",
-"dl"
-],
-
-description:"Downloader commands list"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-reply,
-botName
-
-}=conText;
-
-
-
-return reply(
-
-`╭━━〔 ${botName} 〕━━╮
-
-📥 DOWNLOADER MENU
-
-🎵 TikTok
-. tiktok
-
-📸 Instagram
-. ig
-
-📘 Facebook
-. fb
-
-🐦 Twitter/X
-. twitter
-
-▶️ YouTube
-. ytv
-
-🎧 Spotify
-. spotify
-
-📁 Google Drive
-. gdrive
-
-🔥 MediaFire
-. mediafire
-
-📱 APK
-. apk
-
-📦 Github
-. gitclone
-
-📋 Pastebin
-. pastebin
-
-🎶 SoundCloud
-. soundcloud
-
-📌 Pinterest
-. pinterest
-
-👻 Snapchat
-. snapchat
-
-
-╰━━━━━━━━━━━━╯
-
-⚡ Powered by MNYANDWA-MD`
-
-);
-
-
-}
-
-);
-
-
-
-
-
-
-
-// ===============================
-// BOT ABOUT
-// ===============================
-
-
-gmd(
-{
-pattern:"dlabout",
-
-category:"main",
-
-react:"🤖",
-
-aliases:[
-"downloaderinfo"
-],
-
-description:"Downloader information"
-
-},
-
-
-async(from,Gifted,conText)=>{
-
-
-const {
-
-reply,
-botName
-
-}=conText;
-
-
-
-reply(
-
-`╭━━〔 🤖 ${botName} 〕━━╮
-
-🔥 Advanced Downloader System
-
-👑 Owner:
-Kelvin Mnyandwa
-
-⚡ Engine:
-MNYANDWA-MD
-
-📥 Features:
-✔ Video Downloader
-✔ Audio Downloader
-✔ File Downloader
-✔ Social Media Downloader
-
-🚀 Version:
-2.0
-
-╰━━━━━━━━━━━━╯`
-
-);
-
-
-}
-
+    {
+        pattern: "snack",
+        category: "downloader",
+        react: "🍿",
+        aliases: ["snackdl", "snackvideo"],
+        description: "Download Snack Video. Usage: .snack <Snack Video URL>",
+    },
+    async (from, Guru, conText) => {
+        const { q, mek, reply, react, botFooter, KoyotehApi, GuruApiKey } = conText;
+
+        if (!q) {
+            await react("❌");
+            return reply(toxicBox("SNACK VIDEO", [
+                "⚠️ Send a Snack Video URL.",
+                "Example: .snack https://snackvideo.com/video/xxx",
+            ], botFooter));
+        }
+
+        if (!q.includes("snackvideo.com")) {
+            await react("❌");
+            return reply(toxicBox("SNACK VIDEO", ["❌ Invalid Snack Video URL."], botFooter));
+        }
+
+        await react("⌛");
+        await reply(toxicBox("SNACK VIDEO", ["⬇️ Downloading Snack Video..."], botFooter));
+
+        try {
+            const r = await axios.get(
+                `${KoyotehApi}/api/download/snackdl?apikey=${GuruApiKey}&url=${encodeURIComponent(q)}`,
+                { timeout: 60000 }
+            );
+
+            if (!r.data?.success || !r.data?.result?.media) {
+                await react("❌");
+                return reply(toxicBox("SNACK VIDEO", ["❌ Failed to fetch. Check URL and try again."], botFooter));
+            }
+
+            const { title, media, author, like } = r.data.result;
+
+            const fileSize = await getFileSize(media).catch(() => 0);
+            await Guru.sendMessage(from, {
+                ...(fileSize > MAX_MEDIA_SIZE
+                    ? { document: { url: media }, fileName: `${(title || "snack_video").replace(/[^\w\s.-]/gi, "")}.mp4`, mimetype: "video/mp4" }
+                    : { video: { url: media }, mimetype: "video/mp4" }),
+                caption: toxicBox("SNACK VIDEO", [
+                    `🎬 ${title || "Snack Video"}`,
+                    `👤 ${author || "Unknown"}`,
+                    like ? `❤️ ${like} likes` : null,
+                ], botFooter),
+            }, { quoted: mek });
+
+            await react("✅");
+        } catch (err) {
+            console.error("Snack Video error:", err);
+            await react("❌");
+            return reply(toxicBox("SNACK VIDEO", [`❌ Error: ${err.message}`], botFooter));
+        }
+    },
 );
-
-
-
-// ===============================
-// END OF DOWNLOADER2.JS
-// ===============================
