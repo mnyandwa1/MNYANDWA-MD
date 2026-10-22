@@ -1,8 +1,8 @@
 const { getSetting } = require("./database/settings");
 
 async function getContextInfo(mentionedJid = []) {
-    const botName = await getSetting("BOT_NAME") || "𝐀𝐓𝐀𝐒𝐒𝐀-𝐌𝐃";
-    const channelJid = await getSetting("NEWSLETTER_JID") || "120363426409647211@newsletter";
+    const botName = await getSetting("BOT_NAME") || "𝐔𝐋𝐓𝐑𝐀 𝐆𝐔𝐑𝐔";
+    const channelJid = await getSetting("NEWSLETTER_JID") || "120363406649804510@newsletter";
     return {
         mentionedJid,
         forwardingScore: 1,

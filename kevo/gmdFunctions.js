@@ -9,19 +9,315 @@ const path = require("path");
 const util = require("util");
 const zlib = require("zlib");
 const sharp = require('sharp');
-const config = require('../config');
+const config = require('./config');
 const FormData = require('form-data');
 const { fromBuffer } = require('file-type');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
-const ffmpegPath = require('ffmpeg-static');
 const { Readable } = require('stream');
+const { execSync } = require('child_process');
+
+// Resolve ffmpeg binary: prefer ffmpeg-static, fall back to system ffmpeg
+let ffmpegPath;
+try {
+    const staticPath = require('ffmpeg-static');
+    const fs_sync = require('fs');
+    if (staticPath && fs_sync.existsSync(staticPath)) {
+        ffmpegPath = staticPath;
+    } else {
+        ffmpegPath = execSync('which ffmpeg').toString().trim();
+    }
+} catch (_) {
+    try { ffmpegPath = execSync('which ffmpeg').toString().trim(); } catch (__) { ffmpegPath = 'ffmpeg'; }
+}
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 const sessionDir = path.join(__dirname, "session");
 const sessionPath = path.join(sessionDir, "creds.json");
 
+// ============ HOST DETECTION ============
+function detectHostEnvironment() {
+    if (process.env.KATABAMP) return 'katabamp';
+    if (process.env.PTERODACTYL || process.env.PANEL) return 'pterodactyl';
+    if (process.env.KOYEB) return 'koyeb';
+    if (process.env.RENDER) return 'render';
+    if (process.env.HEROKU || process.env.DYNO) return 'heroku';
+    if (process.env.RAILWAY) return 'railway';
+    if (process.env.REPL_ID || process.env.REPL_OWNER) return 'replit';
+    if (require('os').platform() !== 'win32') return 'vps';
+    return 'unknown';
+}
 
+// Cloud platforms that supply SESSION_ID via environment variables only
+const CLOUD_ENVS = ['heroku', 'render', 'koyeb', 'railway', 'replit'];
+
+// ============ SESSION LOADER ============
+async function loadSession() {
+    const hostEnv = detectHostEnvironment();
+    console.log(`🖥️ Detected Environment: ${hostEnv.toUpperCase()}`);
+
+    try {
+        // Clear old credential files (keep .db files used by SQLite auth)
+        if (fs.existsSync(sessionDir)) {
+            const allFiles = fs.readdirSync(sessionDir);
+            allFiles.forEach(f => {
+                if (!f.endsWith('.db')) {
+                    try { fs.unlinkSync(path.join(sessionDir, f)); } catch (e) {}
+                }
+            });
+        }
+
+        let sessionId = config.SESSION_ID;
+
+        if (!sessionId || typeof sessionId !== 'string' || sessionId.trim() === '') {
+            if (CLOUD_ENVS.includes(hostEnv)) {
+                // Heroku / Render / Koyeb / Railway — must use env var
+                console.error("╔══════════════════════════════════════════════════════════╗");
+                console.error("║  ❌  SESSION_ID is not set!                              ║");
+                console.error("║  Add SESSION_ID to your platform's environment variables.║");
+                console.error("║  Format:  SESSION_ID=LUKA~xxxx...                        ║");
+                console.error("╚══════════════════════════════════════════════════════════╝");
+                if (hostEnv === 'replit') {
+                    // On Replit, keep the web server alive so the dashboard is accessible
+                    console.log("⏳ Waiting for SESSION_ID to be set in Replit Secrets...");
+                    await new Promise(() => {}); // keep process alive
+                }
+                process.exit(1);
+            } else {
+                // Panels (Katabamp, Pterodactyl), VPS, local — prompt to paste
+                const readline = require('readline');
+                const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+                console.log(`
+╔══════════════════════════════════════════════════════════════╗
+║           📱  LUKA-AI — SESSION SETUP                  ║
+╠══════════════════════════════════════════════════════════════╣
+║  Paste your SESSION_ID below and press Enter.                ║
+║  Format:  LUKA~xxxxxxxx...                                ║
+╚══════════════════════════════════════════════════════════════╝`);
+                sessionId = await new Promise((resolve) => {
+                    rl.question('\n> SESSION_ID: ', (answer) => {
+                        rl.close();
+                        resolve(answer.trim());
+                    });
+                });
+                if (!sessionId) {
+                    console.error('❌ No SESSION_ID entered. Exiting.');
+                    process.exit(1);
+                }
+                // ── Persist to .env so restarts don't prompt again ──────────
+                try {
+                    const envPath = path.join(__dirname, '..', '..', '.env');
+                    let envContent = '';
+                    if (fs.existsSync(envPath)) {
+                        envContent = fs.readFileSync(envPath, 'utf8');
+                        // Remove any existing SESSION_ID line
+                        envContent = envContent.split('\n')
+                            .filter(l => !l.startsWith('SESSION_ID='))
+                            .join('\n');
+                        if (envContent && !envContent.endsWith('\n')) envContent += '\n';
+                    }
+                    fs.writeFileSync(envPath, `${envContent}SESSION_ID=${sessionId}\n`, 'utf8');
+                    // Reload into process.env immediately
+                    process.env.SESSION_ID = sessionId;
+                    console.log('💾 SESSION_ID saved to .env — won\'t be asked again after restart.');
+                } catch (saveErr) {
+                    console.warn('⚠️ Could not save SESSION_ID to .env:', saveErr.message);
+                }
+            }
+        }
+
+        console.log("📦 SESSION_ID found — loading session...");
+        return await processSessionId(sessionId.trim());
+
+    } catch (e) {
+        console.error("❌ Session Error:", e.message);
+        throw e;
+    }
+}
+
+// Stubs kept for backwards-compatibility with any plugin that imports these
+const isPairingMode = false;
+const pendingPairingNumber = null;
+function getPairingInfo() { return { isPairingMode: false, phoneNumber: null }; }
+function resetPairingMode() {}
+
+function validateCreds(credsPath) {
+    try {
+        const raw = fs.readFileSync(credsPath, 'utf8');
+        const creds = JSON.parse(raw);
+        const required = ['noiseKey', 'signedIdentityKey', 'registrationId'];
+        const missing = required.filter(k => !creds[k]);
+        if (missing.length > 0) {
+            throw new Error(`Missing required session fields: ${missing.join(', ')}`);
+        }
+        if (creds.me?.id) {
+            console.log(`✅ Session valid — WhatsApp number: ${creds.me.id.split(':')[0].split('@')[0]}`);
+        } else {
+            console.log("✅ Session structure valid (number will show after connect)");
+        }
+        return true;
+    } catch (e) {
+        throw new Error(`❌ SESSION_ID loaded but creds are invalid: ${e.message}`);
+    }
+}
+
+async function processSessionId(sessionId) {
+    try {
+        // LUKA~ and LUKA~ formats are supported
+        const isValidFormat = sessionId.startsWith('LUKA~') || sessionId.startsWith('LUKA~');
+
+        if (!isValidFormat) {
+            throw new Error("❌ Invalid session format. Expected 'LUKA~.....' or 'LUKA~.....'");
+        }
+
+        const [header, b64data] = sessionId.split('~');
+
+        if (!b64data) {
+            throw new Error("❌ Invalid session format. Missing session data");
+        }
+
+        if (!fs.existsSync(sessionDir)) {
+            fs.mkdirSync(sessionDir, { recursive: true });
+        }
+
+        // Handle base64 session (direct)
+        if (b64data.startsWith('H4sI')) {
+            try {
+                const compressedData = Buffer.from(b64data, 'base64');
+                const decompressedData = zlib.gunzipSync(compressedData);
+                fs.writeFileSync(sessionPath, decompressedData, "utf8");
+                console.log("✅ Session File Loaded (Direct Base64)");
+            } catch (gzipError) {
+                throw new Error(`❌ SESSION_ID appears corrupted or invalid (decompression failed): ${gzipError.message}`);
+            }
+        } else {
+            // Try base64 decode + gunzip
+            try {
+                const compressedData = Buffer.from(b64data, 'base64');
+                const decompressedData = zlib.gunzipSync(compressedData);
+                fs.writeFileSync(sessionPath, decompressedData, "utf8");
+                console.log("✅ Session File Loaded (Base64 Decoded)");
+            } catch (decodeError) {
+                // Last resort: treat as raw JSON
+                fs.writeFileSync(sessionPath, b64data, "utf8");
+                console.log("✅ Session File Loaded (Raw Session Data)");
+            }
+        }
+
+        // Validate the written creds before handing off to Baileys
+        validateCreds(sessionPath);
+        return true;
+
+    } catch (e) {
+        throw new Error(`❌ Failed to load session: ${e.message}`);
+    }
+}
+
+// ============ GET PAIRING INFO ============
+function getPairingInfo() {
+    if (isPairingMode && pendingPairingNumber) {
+        return { isPairingMode: true, phoneNumber: pendingPairingNumber };
+    }
+    return { isPairingMode: false, phoneNumber: null };
+}
+
+function resetPairingMode() {
+    isPairingMode = false;
+    pendingPairingNumber = null;
+}
+
+async function useSQLiteAuthState(databasePath) {
+    const Database = require('better-sqlite3');
+    const { proto, initAuthCreds, BufferJSON } = require('@whiskeysockets/baileys');
+
+    const dbPath = databasePath.endsWith('.db') ? databasePath : `${databasePath}/session.db`;
+    const dbDir = path.dirname(dbPath);
+    if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+    }
+
+    const credsPath = path.join(path.dirname(dbPath), 'creds.json');
+    let initialCreds = null;
+    if (fs.existsSync(credsPath)) {
+        try {
+            const credsData = fs.readFileSync(credsPath, 'utf8');
+            initialCreds = JSON.parse(credsData, BufferJSON.reviver);
+        } catch (e) {
+            console.error('Failed to read creds.json:', e.message);
+        }
+    }
+
+    const db = new Database(dbPath);
+    db.pragma('journal_mode = WAL');
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS session (
+            id TEXT PRIMARY KEY,
+            value TEXT
+        )
+    `);
+
+    const readData = (id) => {
+        const row = db.prepare('SELECT value FROM session WHERE id = ?').get(id);
+        if (row) {
+            return JSON.parse(row.value, BufferJSON.reviver);
+        }
+        return null;
+    };
+
+    const writeData = (id, value) => {
+        db.prepare('INSERT OR REPLACE INTO session (id, value) VALUES (?, ?)').run(id, JSON.stringify(value, BufferJSON.replacer));
+    };
+
+    const removeData = (id) => {
+        db.prepare('DELETE FROM session WHERE id = ?').run(id);
+    };
+
+    if (initialCreds) {
+        const existingCreds = readData('creds');
+        if (!existingCreds) {
+            writeData('creds', initialCreds);
+        }
+        try { fs.unlinkSync(credsPath); } catch (e) {}
+    }
+
+    const creds = readData('creds') || initAuthCreds();
+
+    return {
+        state: {
+            creds,
+            keys: {
+                get: async (type, ids) => {
+                    const data = {};
+                    for (const id of ids) {
+                        const value = readData(`${type}-${id}`);
+                        if (value) {
+                            data[id] = value;
+                        }
+                    }
+                    return data;
+                },
+                set: async (data) => {
+                    for (const category in data) {
+                        for (const id in data[category]) {
+                            const value = data[category][id];
+                            const key = `${category}-${id}`;
+                            if (value) {
+                                writeData(key, value);
+                            } else {
+                                removeData(key);
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        saveCreds: () => {
+            writeData('creds', creds);
+        }
+    };
+}
+
+// ============ STICKER FUNCTIONS ============
 async function stickerToImage(webpData, options = {}) {
     try {
         const {
@@ -145,7 +441,7 @@ async function withTempFiles(inputBuffer, extension, processFn) {
   const uniqueId = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
   const tempInput = path.join(tempDir, `input_${uniqueId}.tmp`);
   const tempOutput = path.join(tempDir, `output_${uniqueId}.${extension}`);
-
+  
   try {
     fs.writeFileSync(tempInput, inputBuffer);
     await processFn(tempInput, tempOutput);
@@ -157,20 +453,18 @@ async function withTempFiles(inputBuffer, extension, processFn) {
   }
 }
 
-
 async function toAudio(buffer) {
   return withTempFiles(buffer, 'mp3', (input, output) => {
     return new Promise((resolve, reject) => {
       const { execFile } = require('child_process');
-
-      // First check if video has audio stream
+      
       execFile(ffmpegPath, ['-i', input, '-hide_banner'], { timeout: 30000 }, (probeErr, probeOut, probeStderr) => {
         const hasAudio = probeStderr && (probeStderr.includes('Audio:') || probeStderr.includes('audio'));
-
+        
         if (!hasAudio) {
           return reject(new Error('This video has no audio track to extract'));
         }
-
+        
         execFile(ffmpegPath, [
           '-i', input,
           '-vn',
@@ -220,7 +514,6 @@ async function toVideo(buffer) {
   });
 }
 
-
 async function toPtt(buffer) {
   const { execFile } = require('child_process');
   const tempDir = path.join(__dirname, 'temp');
@@ -257,38 +550,6 @@ async function toPtt(buffer) {
         resolve(out);
       } catch (e) { cleanup(); reject(e); }
     });
-  });
-}
-
-async function waitForFileToStabilize(filePath, timeout = 500000) {
-  let lastSize = -1;
-  let stableCount = 0;
-  const interval = 200;
-
-  return new Promise((resolve, reject) => {
-    const start = Date.now();
-    const timer = setInterval(async () => {
-      try {
-        const { size } = await fs.promises.stat(filePath);
-        if (size === lastSize) {
-          stableCount++;
-          if (stableCount >= 3) {
-            clearInterval(timer);
-            return resolve();
-          }
-        } else {
-          stableCount = 0;
-          lastSize = size;
-        }
-
-        if (Date.now() - start > timeout) {
-          clearInterval(timer);
-          return reject(new Error("File stabilization timed out."));
-        }
-      } catch (err) {
-
-      }
-    }, interval);
   });
 }
 
@@ -333,7 +594,6 @@ async function formatAudio(buffer) {
   });
 }
 
-
 async function formatVideo(buffer) {
   const { execFile } = require('child_process');
   const tempDir = path.join(__dirname, 'temp');
@@ -362,8 +622,8 @@ async function formatVideo(buffer) {
         try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch {}
         execFile(ffmpegPath, [
           '-y', '-i', inputPath,
-          '-map', '0:v:0',          // primary video stream only
-          '-map', '0:a:0?',         // primary audio stream (optional — skip if broken)
+          '-map', '0:v:0',
+          '-map', '0:a:0?',
           '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23',
           '-c:a', 'aac', '-b:a', '128k', '-ac', '2', '-ar', '44100',
           '-movflags', '+faststart', '-pix_fmt', 'yuv420p',
@@ -379,7 +639,6 @@ async function formatVideo(buffer) {
       });
   });
 }
-
 
 function monospace(input) {
     const boldz = {
@@ -408,149 +667,6 @@ function formatBytes(bytes) {
   } else {
     return bytes.toFixed(2) + ' bytes';
   }
-    }
-
-async function loadSession() {
-    try {
-        if (fs.existsSync(sessionDir)) {
-            const allFiles = fs.readdirSync(sessionDir);
-            allFiles.forEach(f => {
-                try { fs.unlinkSync(path.join(sessionDir, f)); } catch (e) {}
-            });
-        }
-
-        if (!config.SESSION_ID || typeof config.SESSION_ID !== 'string') {
-            throw new Error("❌ SESSION_ID is missing or invalid");
-        }
-
-        let sessionId = config.SESSION_ID;
-        const [headerCheck, b64Check] = sessionId.split('~');
-
-        if (headerCheck !== "GURU" || !b64Check) {
-            throw new Error("❌ Invalid session format. Expected 'GURU~.....'");
-        }
-
-        if (!b64Check.startsWith('H4sI')) {
-            const serverUrl = `https://session.gifted.co.ke/session/${b64Check}`;
-            const res = await axios.get(serverUrl, { timeout: 15000 });
-            const fetched = (res.data || '').toString().trim();
-            if (!fetched.startsWith('GURU~H4sI')) {
-                throw new Error("❌ Session server returned invalid data");
-            }
-            sessionId = fetched;
-        }
-
-        const [header, b64data] = sessionId.split('~');
-
-        if (header !== "GURU" || !b64data) {
-            throw new Error("❌ Invalid session format. Expected 'GURU~.....'");
-        }
-
-        const cleanB64 = b64data.replace('...', '');
-        const compressedData = Buffer.from(cleanB64, 'base64');
-        const decompressedData = zlib.gunzipSync(compressedData);
-
-        if (!fs.existsSync(sessionDir)) {
-            fs.mkdirSync(sessionDir, { recursive: true });
-        }
-
-        fs.writeFileSync(sessionPath, decompressedData, "utf8");
-        console.log("✅ Session File Loaded");
-
-    } catch (e) {
-        console.error("❌ Session Error:", e.message);
-        throw e;
-    }
-}
-
-async function useSQLiteAuthState(databasePath) {
-    const Database = require('better-sqlite3');
-    const { proto, initAuthCreds, BufferJSON } = require('gifted-baileys');
-
-    const dbPath = databasePath.endsWith('.db') ? databasePath : `${databasePath}/session.db`;
-    const dbDir = path.dirname(dbPath);
-    if (!fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
-    }
-
-    const credsPath = path.join(path.dirname(dbPath), 'creds.json');
-    let initialCreds = null;
-    if (fs.existsSync(credsPath)) {
-        try {
-            const credsData = fs.readFileSync(credsPath, 'utf8');
-            initialCreds = JSON.parse(credsData, BufferJSON.reviver);
-        } catch (e) {
-            console.error('Failed to read creds.json:', e.message);
-        }
-    }
-
-    const db = new Database(dbPath);
-    db.pragma('journal_mode = WAL');
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS session (
-            id TEXT PRIMARY KEY,
-            value TEXT
-        )
-    `);
-
-    const readData = (id) => {
-        const row = db.prepare('SELECT value FROM session WHERE id = ?').get(id);
-        if (row) {
-            return JSON.parse(row.value, BufferJSON.reviver);
-        }
-        return null;
-    };
-
-    const writeData = (id, value) => {
-        db.prepare('INSERT OR REPLACE INTO session (id, value) VALUES (?, ?)').run(id, JSON.stringify(value, BufferJSON.replacer));
-    };
-
-    const removeData = (id) => {
-        db.prepare('DELETE FROM session WHERE id = ?').run(id);
-    };
-
-    if (initialCreds) {
-        writeData('creds', initialCreds);
-        try {
-            fs.unlinkSync(credsPath);
-        } catch (e) {}
-    }
-
-    const creds = readData('creds') || initAuthCreds();
-
-    return {
-        state: {
-            creds,
-            keys: {
-                get: async (type, ids) => {
-                    const data = {};
-                    for (const id of ids) {
-                        const value = readData(`${type}-${id}`);
-                        if (value) {
-                            data[id] = value;
-                        }
-                    }
-                    return data;
-                },
-                set: async (data) => {
-                    for (const category in data) {
-                        for (const id in data[category]) {
-                            const value = data[category][id];
-                            const key = `${category}-${id}`;
-                            if (value) {
-                                writeData(key, value);
-                            } else {
-                                removeData(key);
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        saveCreds: () => {
-            writeData('creds', creds);
-        }
-    };
 }
 
 const runtime = (seconds) => {
@@ -606,13 +722,13 @@ const gmdBuffer = async (url, options = {}) => {
             },
             ...options,
             responseType: 'arraybuffer',
-            timeout: 2400000 // 24 mins😂
+            timeout: 2400000
         });
-
+        
         if (!res.data || res.data.length === 0) {
             throw new Error("Empty response data");
         }
-
+        
         return res.data;
     } catch (err) {
         console.error("gmdBuffer Error:", err);
@@ -630,13 +746,13 @@ const gmdJson = async (url, options = {}) => {
                 'Accept': 'application/json'
             },
             ...options,
-            timeout: 2400000 // 24 mins😂
+            timeout: 2400000
         });
-
+        
         if (!res.data) {
             throw new Error("Empty response data");
         }
-
+        
         return res.data;
     } catch (err) {
         console.error("gmdJson Error:", err);
@@ -664,7 +780,7 @@ function verifyJidState(jid) {
         console.error('Your verified', jid);
         return false;
     }
-    console.log('Welcome to Gifted Md', jid);
+    console.log('Welcome to BLACK PANTHER Bot', jid);
     return true;
 }
 
@@ -708,10 +824,10 @@ class gmdStore {
         if (!this.messages.has(jid)) {
             this.messages.set(jid, new Map());
         }
-
+        
         const chatMessages = this.messages.get(jid);
         chatMessages.set(message.key.id, message);
-
+        
         if (chatMessages.size > this.maxMessages) {
             const firstKey = chatMessages.keys().next().value;
             chatMessages.delete(firstKey);
@@ -725,8 +841,6 @@ class gmdStore {
                 const oldestChats = Array.from(this.messages.keys()).slice(0, chatsToDelete);
                 oldestChats.forEach(jid => this.messages.delete(jid));
             }
-
-         //   console.log(`🧹 Store cleanup: ${this.messages.size} chats in memory`);
         } catch (error) {
             console.error('Store cleanup error:', error);
         }
@@ -962,16 +1076,16 @@ const MIME_EXTENSIONS = {
 function getExtensionFromMime(contentType) {
     const baseMime = contentType.split(';')[0].trim().toLowerCase();
     if (MIME_EXTENSIONS[baseMime]) return MIME_EXTENSIONS[baseMime];
-
+    
     for (const [mime, ext] of Object.entries(MIME_EXTENSIONS)) {
         if (baseMime.includes(mime.split('/')[1])) return ext;
     }
-
+    
     if (baseMime.startsWith('text/')) return '.txt';
     if (baseMime.startsWith('image/')) return '.bin';
     if (baseMime.startsWith('audio/')) return '.bin';
     if (baseMime.startsWith('video/')) return '.bin';
-
+    
     return '.bin';
 }
 
@@ -983,4 +1097,12 @@ function isTextContent(contentType) {
     return textTypes.some(t => contentType.includes(t));
 }
 
-module.exports = { dBinary, eBinary, dBase, eBase, runtime, sleep, gmdFancy, stickerToImage, toAudio, toVideo, toPtt, formatVideo, formatAudio, monospace, formatBytes, gmdBuffer, gmdJson, latestWaVersion, gmdRandom, isUrl, gmdStore, isNumber, loadSession, useSQLiteAuthState, verifyJidState, runFFmpeg, getVideoDuration, gmdSticker, copyFolderSync, gitRepoRegex, MAX_MEDIA_SIZE, getFileSize, getMimeCategory, getMimeFromUrl, MIME_EXTENSIONS, getExtensionFromMime, isTextContent };
+module.exports = { 
+    dBinary, eBinary, dBase, eBase, runtime, sleep, gmdFancy, stickerToImage, 
+    toAudio, toVideo, toPtt, formatVideo, formatAudio, monospace, formatBytes, 
+    gmdBuffer, gmdJson, latestWaVersion, gmdRandom, isUrl, gmdStore, isNumber, 
+    loadSession, useSQLiteAuthState, verifyJidState, runFFmpeg, getVideoDuration, 
+    gmdSticker, copyFolderSync, gitRepoRegex, MAX_MEDIA_SIZE, getFileSize, 
+    getMimeCategory, getMimeFromUrl, MIME_EXTENSIONS, getExtensionFromMime, 
+    isTextContent, detectHostEnvironment, getPairingInfo, resetPairingMode
+};
