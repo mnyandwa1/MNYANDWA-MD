@@ -46,7 +46,7 @@ const {
 // ─── Constants ───────────────────────────────────────────────────────────────
 const PORT            = process.env.PORT || 5000;
 const SESSION_DIR     = path.join(__dirname, "kevo", "session");
-const PLUGINS_DIR     = path.join(__dirname, "kevo");
+const PLUGINS_DIR     = path.join(__dirname, "kevoh");
 const MEMORY_LIMIT    = 400 * 1024 * 1024; // 400 MB
 const AUTO_RESTART_MS = 24 * 60 * 60 * 1000; // 24 hours
 
