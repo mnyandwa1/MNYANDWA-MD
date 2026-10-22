@@ -31,12 +31,12 @@ const SettingsDB = DATABASE.define(
 
 const DEFAULT_SETTINGS = {
     PREFIX: ".",
-    OWNER_NAME: "Lukabrand",
+    OWNER_NAME: "Kevo",
     OWNER_NUMBER: "25768619068",
-    BOT_NAME: "LUKA-AI",
-    FOOTER: "ᴘᴏᴡᴇʀᴇᴅ ʙʏ ʟᴜᴋᴀʙʀᴀɴᴅ",
-    CAPTION: "⚡ LUKA-AI Premium | Ultra Fast | Ultra Secure",
-    BOT_PIC: "https://i.imgur.com/gwSrfcK.png",
+    BOT_NAME: "MNYANDWA-MD",
+    FOOTER: "ᴘᴏᴡᴇʀᴇᴅ ʙʏ MNYANDWA",
+    CAPTION: "⚡ MNYANDWA-MD Premium | Ultra Fast | Ultra Secure",
+    BOT_PIC: "https://i.imgur.com/S0vFsHt.jpeg",
     VERSION: packageJson.version || "2.0.0",
     MODE: config.MODE || "public",
     WARN_COUNT: "3",  // legacy alias — WARN_LIMIT (in extended settings) is the canonical key
@@ -64,11 +64,11 @@ const DEFAULT_SETTINGS = {
     YT: "youtube.com/@lucvoice",
     NEWSLETTER_JID: "120363406649804510@newsletter",
     GC_JID: "Cp6waPAdT3hLVcbdfBeV61",  // Updated group invite code
-    NEWSLETTER_URL: "https://whatsapp.com/channel/0029Vb7jauLcbcHi0e",
-    BOT_REPO: "Lukabrand/LUKA-AI",
+    NEWSLETTER_URL: "https://whatsapp.com/channel/0029Vb9V592GJP8MZfjqfN2O",
+    BOT_REPO: "mnyandwa1/MNYANDWA-MD",
     AUTO_UPDATE: "true",
-    PACK_NAME: "LUKA-AI",
-    PACK_AUTHOR: "LUKABRAND 🐾",
+    PACK_NAME: "MNYANDWA-MD",
+    PACK_AUTHOR: "MNYANDWA 🐾",
     SUDO_NUMBERS: "",
     PM_PERMIT: "false",
     GREETINGS_ENABLED: "false",
@@ -86,7 +86,7 @@ const DEFAULT_SETTINGS = {
     TAG_PROTECT: "false",
     GLOBAL_SPAM_FILTER: "false",
     BOT_PREFIX: ".",
-    BOT_BIO: "ᴘᴏᴡᴇʀᴇᴅ ʙʏ ʟᴜᴋᴀʙʀᴀɴᴅ🚀",
+    BOT_BIO: "ᴘᴏᴡᴇʀᴇᴅ ʙʏ MNYANDWA 🚀",
     BOT_VERSION: packageJson.version || "5.0.0",
     MENU_THEME: "ultra",
     // Anti-viewonce / VV tracker
@@ -143,7 +143,7 @@ async function initializeSettings() {
     }
 
     initialized = true;
-    console.log("✅ LUKA-AI Settings Initialized");
+    console.log("✅ MNYANDWA-MD Settings Initialized");
 }
 
 async function getSetting(key) {
