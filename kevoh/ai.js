@@ -1,5 +1,5 @@
 
-const { gmd, toPtt } = require("../luka");
+const { gmd, toPtt } = require("../kevi");
 const axios = require("axios");
 const googleTTS = require("google-tts-api");
 const Database = require("better-sqlite3");
@@ -7,7 +7,7 @@ const path = require("path");
 const fs = require("fs-extra");
 
 // ── Persistent Meta AI memory (SQLite) ──────────────────────────────────────
-const AI_DB_DIR = path.join(__dirname, "../luka/database");
+const AI_DB_DIR = path.join(__dirname, "../kevi/database");
 fs.ensureDirSync(AI_DB_DIR);
 const _aiDb = new Database(path.join(AI_DB_DIR, "ai_memory.db"));
 _aiDb.pragma("journal_mode = WAL");
