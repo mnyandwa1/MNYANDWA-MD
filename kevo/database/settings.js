@@ -32,7 +32,7 @@ const SettingsDB = DATABASE.define(
 const DEFAULT_SETTINGS = {
     PREFIX: ".",
     OWNER_NAME: "Kevo",
-    OWNER_NUMBER: "25768619068",
+    OWNER_NUMBER: "255672514834",
     BOT_NAME: "MNYANDWA-MD",
     FOOTER: "ᴘᴏᴡᴇʀᴇᴅ ʙʏ MNYANDWA",
     CAPTION: "⚡ MNYANDWA-MD Premium | Ultra Fast | Ultra Secure",
