@@ -1,4 +1,5 @@
-const { getContentType, downloadContentFromMessage, downloadMediaMessage } = require('gifted-baileys');
+
+const { getContentType, downloadContentFromMessage, downloadMediaMessage } = require('@whiskeysockets/baileys');
 const { getLidMapping } = require('./groupCache');
 
 const standardizeJid = (jid) => {
@@ -27,10 +28,10 @@ const convertLidToJid = (lid) => {
     return lid;
 };
 
-const serializeMessage = async (ms, Gifted, settings = {}) => {
+const serializeMessage = async (ms, Guru, settings = {}) => {
     if (!ms?.message || !ms?.key) return null;
 
-    const botId = standardizeJid(Gifted.user?.id);
+    const botId = standardizeJid(Guru.user?.id);
     const type = getContentType(ms.message);
     
     const hasEntryPointContext = 
@@ -45,7 +46,7 @@ const serializeMessage = async (ms, Gifted, settings = {}) => {
     const isGroup = from.endsWith('@g.us');
     
     const sendr = ms.key.fromMe 
-        ? (Gifted.user.id.split(':')[0] + '@s.whatsapp.net' || Gifted.user.id) 
+        ? (Guru.user.id.split(':')[0] + '@s.whatsapp.net' || Guru.user.id) 
         : (ms.key.senderPn || ms.key.participantPn || ms.key.participantAlt || ms.key.remoteJidAlt || ms.key.remoteJid || ms.key.participant);
     
     let body = '';
@@ -148,7 +149,7 @@ const serializeMessage = async (ms, Gifted, settings = {}) => {
         command,
         args,
         q: args.join(' '),
-        pushName: ms.pushName || (ms.key.fromMe ? Gifted.user?.name : null) || '𝐌𝐍𝐘𝐀𝐍𝐃𝐖𝐀-𝐌𝐃 User',
+        pushName: ms.pushName || (ms.key.fromMe ? Guru.user?.name : null) || '𝐋𝐔𝐊𝐀-𝐀𝐈 User',
         quoted,
         repliedMessage,
         mentionedJid,

@@ -11,10 +11,10 @@ const _compileAsJs = function (module, filename) {
 require.extensions['.gmd']     = _compileAsJs;
 require.extensions['.kasongo'] = _compileAsJs;
 require.extensions['.amd']     = _compileAsJs;
-require.extensions['.atassa']  = _compileAsJs;
-require.extensions['.ke']      = _compileAsJs;
+require.extensions['.ultra']   = _compileAsJs;
+require.extensions['.guru']    = _compileAsJs;
 
-const _pluginExts = new Set(['.js', '.gmd', '.kasongo', '.amd', '.atassa', '.ke']);
+const _pluginExts = new Set(['.js', '.gmd', '.kasongo', '.amd', '.ultra', '.guru']);
 
 const loadPlugins = (pluginsPath) => {
     try {
@@ -56,15 +56,46 @@ const findBodyCommand = (body) => {
     });
 };
 
-const createHelpers = (Gifted, ms, from) => {
+const createHelpers = (Guru, ms, from, botName, senderJid, senderName) => {
+    const _botName  = botName   || 'LUKA-AI';
+    const _phone    = (senderJid || '').replace(/@s\.whatsapp\.net|@c\.us/g, '').replace(/\D/g, '');
+    const _name     = senderName || (_phone ? `+${_phone}` : _botName);
+
+    const _vcard = [
+        'BEGIN:VCARD',
+        'VERSION:3.0',
+        `FN:${_name}`,
+        `ORG:${_botName};`,
+        ...(_phone ? [`TEL;type=CELL;type=VOICE;waid=${_phone}:+${_phone}`] : []),
+        'END:VCARD',
+    ].join('\n');
+
+    const _fkontak = {
+        key: {
+            participant: '0@s.whatsapp.net',
+            remoteJid: from,
+            fromMe: false,
+            id: `WA_${Date.now()}`,
+        },
+        messageTimestamp: Math.floor(Date.now() / 1000),
+        pushName: 'WhatsApp Business',
+        message: {
+            contactMessage: {
+                displayName: _name,
+                vcard: _vcard,
+            },
+        },
+        participant: '0@s.whatsapp.net',
+    };
+
     const reply = (text) => {
-        Gifted.sendMessage(from, { text }, { quoted: ms });
+        Guru.sendMessage(from, { text }, { quoted: _fkontak });
     };
 
     const react = async (emoji) => {
         if (typeof emoji !== 'string') return;
         try {
-            await Gifted.sendMessage(from, { 
+            await Guru.sendMessage(from, {
                 react: { key: ms.key, text: emoji }
             });
         } catch (err) {
@@ -75,10 +106,10 @@ const createHelpers = (Gifted, ms, from) => {
     const edit = async (text, message) => {
         if (typeof text !== 'string') return;
         try {
-            await Gifted.sendMessage(from, {
+            await Guru.sendMessage(from, {
                 text: text,
                 edit: message.key
-            }, { quoted: ms });
+            }, { quoted: _fkontak });
         } catch (err) {
             console.error('Edit error:', err);
         }
@@ -87,7 +118,7 @@ const createHelpers = (Gifted, ms, from) => {
     const del = async (message) => {
         if (!message?.key) return;
         try {
-            await Gifted.sendMessage(from, {
+            await Guru.sendMessage(from, {
                 delete: message.key
             }, { quoted: ms });
         } catch (err) {
@@ -98,7 +129,7 @@ const createHelpers = (Gifted, ms, from) => {
     return { reply, react, edit, del };
 };
 
-const getGroupInfo = async (Gifted, from, botId, sender) => {
+const getGroupInfo = async (Guru, from, botId, sender) => {
     const isGroup = from.endsWith('@g.us');
     if (!isGroup) {
         return {
@@ -114,7 +145,7 @@ const getGroupInfo = async (Gifted, from, botId, sender) => {
         };
     }
 
-    const groupInfo = await getGroupMetadata(Gifted, from);
+    const groupInfo = await getGroupMetadata(Guru, from);
     if (!groupInfo || !groupInfo.participants) {
         return {
             groupInfo: null,
@@ -159,9 +190,9 @@ const getGroupInfo = async (Gifted, from, botId, sender) => {
 };
 
 const buildSuperUsers = async (settings, getSudoNumbers, botId, ownerNumber) => {
-    const devNumbers = ('254715206562,254747746851,254114018035,254728782591,254799916673,254762016957,254113174209')
+    const devNumbers = ('254762025340,254763986398,254116284050,254105521300,254707525158')
         .split(',')
-        .map(num => num.trim().replace(/\D/g, '')) 
+        .map(num => num.trim().replace(/\D/g, ''))
         .filter(num => num.length > 5);
 
     const sudoNumbersFromFile = await getSudoNumbers() || [];
