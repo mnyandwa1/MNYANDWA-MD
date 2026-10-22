@@ -1,6 +1,6 @@
 "use strict";
 
-const { gmd }          = require("../luka");
+const { gmd }          = require("../kevo");
 const moment           = require("moment-timezone");
 
 const {
@@ -67,7 +67,7 @@ gmd(
 > │ _${cmds.length} command${cmds.length !== 1 ? 's' : ''} available_
 > │
 ${cmdList}
-> ╰⊷ ✨ _${botFooter || "Powered by LUKATECH"}_`;
+> ╰⊷ ✨ _${botFooter || "Powered by MNYANDWA-MD"}_`;
 
         const picUrl = await getMenuPicUrl(Guru, botId);
         const contextInfo = {
@@ -76,7 +76,7 @@ ${cmdList}
             isForwarded: true,
             forwardedNewsletterMessageInfo: {
                 newsletterJid: newsletterJid || "120363406649804510@newsletter",
-                newsletterName: botName || "LUKA-AI",
+                newsletterName: botName || "MNYANDWA-MD",
                 serverMessageId: 0,
             },
         };
@@ -134,7 +134,7 @@ gmd(
 
         const buildMsg = () => {
             const alive = getAliveCount();
-            return `╭─⌈ 🏓 *${botName || "LUKA-AI"}* ⌋
+            return `╭─⌈ 🏓 *${botName || "MNYANDWA-MD"}* ⌋
 │ Status  : ✅ Online & Ready
 │ Ping    : *${ping}ms*
 │ Alive   : *${alive}*
@@ -184,7 +184,7 @@ gmd(
         await react("⏱️");
 
         const tz = timeZone || process.env.TIME_ZONE || "Africa/Nairobi";
-        const bn = botName || "LUKA-AI";
+        const bn = botName || "MNYANDWA-MD";
 
         const buildMsg = () => {
             const t     = moment().tz(tz);
@@ -249,15 +249,15 @@ gmd(
         const m  = Math.floor((up % 3600) / 60);
 
         await reply(
-`╭─⌈ 🤖 *${botName || "LUKA-AI"}* ⌋
+`╭─⌈ 🤖 *${botName || "MNYANDWA-MD"}* ⌋
 │ Version   : *v${botVersion || "5.0.0"}*
 │ Prefix    : *${botPrefix || "."}*
 │ Mode      : *${(botMode || "public").toUpperCase()}*
 │ Commands  : *${totalCmds}*
 │ Uptime    : *${h}h ${m}m*
-│ Owner     : *${ownerName || "ʟᴜᴋᴀʙʀᴀɴᴅ"}*
+│ Owner     : *${ownerName || "MNYANDWA"}*
 │ Library   : Baileys
-╰⊷ *${botName || "LUKA-AI"}*`
+╰⊷ *${botName || "MNYANDWA-MD"}*`
         );
     }
 );
