@@ -1,3 +1,4 @@
+
 const { DATABASE } = require("./database");
 const { DataTypes } = require("sequelize");
 
@@ -44,6 +45,9 @@ const GROUP_SETTING_DEFAULTS = {
     ANTIGROUPMENTION_WARN_COUNT: "3",
     ANTIPROMOTE: "false",
     ANTIDEMOTE: "false",
+    ANTIBOT: "false",
+    ANTISTICKER: "false",
+    ANTILINK_CHANNEL: "true",
 };
 
 const AntilinkWarningsDB = DATABASE.define(
@@ -327,29 +331,45 @@ async function initializeGroupSettings() {
     }
 }
 
+const GROUP_SETTINGS_CACHE_TTL = 30000;
+const _groupSettingsCache = new Map();
+
+function _groupCacheKey(groupJid, key) {
+    return `${groupJid}::${key}`;
+}
+
+function invalidateGroupSettingCache(groupJid, key) {
+    _groupSettingsCache.delete(_groupCacheKey(groupJid, key));
+}
+
 async function getGroupSetting(groupJid, key) {
+    const cacheKey = _groupCacheKey(groupJid, key);
+    const cached = _groupSettingsCache.get(cacheKey);
+    if (cached && (Date.now() - cached.ts) < GROUP_SETTINGS_CACHE_TTL) {
+        return cached.value;
+    }
+
     const record = await GroupSettingsDB.findOne({
         where: { groupJid, key },
     });
 
-    if (record) {
-        return record.value;
-    }
-
-    return GROUP_SETTING_DEFAULTS[key] || "false";
+    const value = record ? record.value : (GROUP_SETTING_DEFAULTS[key] || "false");
+    _groupSettingsCache.set(cacheKey, { value, ts: Date.now() });
+    return value;
 }
 
 async function setGroupSetting(groupJid, key, value) {
     try {
         const existing = await GroupSettingsDB.findOne({ where: { groupJid, key } });
-        
+
         if (existing) {
             existing.value = value;
             await existing.save();
         } else {
             await GroupSettingsDB.create({ groupJid, key, value });
         }
-        
+
+        invalidateGroupSettingCache(groupJid, key);
         return true;
     } catch (error) {
         console.error(`[setGroupSetting] Error: ${error.message}`);
@@ -395,6 +415,7 @@ async function getEnabledGroupSettings() {
         ANTIGROUPMENTION: [],
         ANTIPROMOTE: [],
         ANTIDEMOTE: [],
+        ANTIBOT: [],
     };
 
     const records = await GroupSettingsDB.findAll();

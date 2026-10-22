@@ -1,3 +1,4 @@
+
 const { DATABASE } = require('./database');
 const { DataTypes, Op } = require('sequelize');
 

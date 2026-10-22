@@ -1,8 +1,9 @@
+
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-const DB_PATH = path.join(process.cwd(), 'gift/session', 'store.db');
+const DB_PATH = path.join(process.cwd(), 'guru/session', 'store.db');
 
 function safeStringify(obj) {
     return JSON.stringify(obj, (_, v) => {

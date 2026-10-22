@@ -1,7 +1,7 @@
 const { DATABASE } = require("./database");
 const { DataTypes } = require("sequelize");
 const path = require("path");
-const config = require("../../config");
+const config = require("../config");
 
 const packageJson = require("../../package.json");
 
@@ -31,15 +31,15 @@ const SettingsDB = DATABASE.define(
 
 const DEFAULT_SETTINGS = {
     PREFIX: ".",
-    OWNER_NAME: "𝐊𝐄𝐕𝐎 𝐓𝐄𝐂𝐇",
-    OWNER_NUMBER: "254747746851",
-    BOT_NAME: "𝐌𝐍𝐘𝐀𝐍𝐃𝐖𝐀-𝐌𝐃",
-    FOOTER: "ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴋᴇᴠᴏ ᴛᴇᴄʜ",
-    CAPTION: "©𝟐𝟎𝟐𝟓 𝐌𝐍𝐘𝐀𝐍𝐃𝐖𝐀-𝐌𝐃 𝐕𝟓",
-    BOT_PIC: "https://files.giftedtech.co.ke/image/u90mimage.jpg",
-    VERSION: packageJson.version || "5.0.0",
+    OWNER_NAME: "Lukabrand",
+    OWNER_NUMBER: "25768619068",
+    BOT_NAME: "LUKA-AI",
+    FOOTER: "ᴘᴏᴡᴇʀᴇᴅ ʙʏ ʟᴜᴋᴀʙʀᴀɴᴅ",
+    CAPTION: "⚡ LUKA-AI Premium | Ultra Fast | Ultra Secure",
+    BOT_PIC: "https://i.imgur.com/gwSrfcK.png",
+    VERSION: packageJson.version || "2.0.0",
     MODE: config.MODE || "public",
-    WARN_COUNT: "3",
+    WARN_COUNT: "3",  // legacy alias — WARN_LIMIT (in extended settings) is the canonical key
     TIME_ZONE: config.TIME_ZONE || "Africa/Nairobi",
     DM_PRESENCE: "online",
     GC_PRESENCE: "online",
@@ -52,27 +52,62 @@ const DEFAULT_SETTINGS = {
     ANTICALL_MSG: "*_📞 Auto Call Reject Mode Active. 📵 No Calls Allowed!_*",
     AUTO_LIKE_STATUS: config.AUTO_LIKE_STATUS || "true",
     AUTO_READ_STATUS: config.AUTO_READ_STATUS || "true",
-    STATUS_LIKE_EMOJIS: "💛,❤️,💜,🤍,💙",
+    STATUS_LIKE_EMOJIS: "💚,💜,💙,❤️",
     AUTO_REPLY_STATUS: "false",
-    STATUS_REPLY_TEXT: "*ʏᴏᴜʀ sᴛᴀᴛᴜs ᴠɪᴇᴡᴇᴅ sᴜᴄᴄᴇssғᴜʟʟʏ ✅*",
+    STATUS_REPLY_TEXT: "*✨ Your status viewed successfully! ✨*",
     AUTO_REACT: "off",
     AUTO_REPLY: "false",
     AUTO_READ_MESSAGES: "off",
-    AUTO_BIO: "false",
+    AUTO_BIO: "true",
     AUTO_BLOCK: "",
-    YT: "youtube.com/@mnyandwa",
-    NEWSLETTER_JID: "120363426409647211@newsletter",
-    GC_JID: "GuS93JhyfyE56LOV3ZJTFZ",
-    NEWSLETTER_URL: "https://whatsapp.com/channel/00tOj5LDuj7Q1p",
-    BOT_REPO: "mnyandwa1/mnyandwa",
-    PACK_NAME: "𝐌𝐍𝐘𝐀𝐍𝐃𝐖𝐀-𝐌𝐃",
-    PACK_AUTHOR: "𝐊𝐄𝐕𝐎 𝐓𝐄𝐂𝐇",
+    AUTO_JOIN: "true",  // Added auto join setting
+    YT: "youtube.com/@lucvoice",
+    NEWSLETTER_JID: "120363406649804510@newsletter",
+    GC_JID: "Cp6waPAdT3hLVcbdfBeV61",  // Updated group invite code
+    NEWSLETTER_URL: "https://whatsapp.com/channel/0029Vb7jauLcbcHi0e",
+    BOT_REPO: "Lukabrand/LUKA-AI",
+    AUTO_UPDATE: "true",
+    PACK_NAME: "LUKA-AI",
+    PACK_AUTHOR: "LUKABRAND 🐾",
     SUDO_NUMBERS: "",
     PM_PERMIT: "false",
+    GREETINGS_ENABLED: "false",
+    GREETINGS_GM_TIME: "06:00",
+    GREETINGS_GN_TIME: "22:00",
+    GREETINGS_GM_MSG: "",
+    GREETINGS_GN_MSG: "",
+    GREETINGS_AUTOTRACK: "true",
+    // Extended settings (settings3)
+    WARN_LIMIT: "3",
+    AUTO_MUTE: "false",
+    REJECT_CALL: "false",
+    BOT_LANG: "en",
+    GROUP_JOIN_ACTION: "join",
+    TAG_PROTECT: "false",
+    GLOBAL_SPAM_FILTER: "false",
+    BOT_PREFIX: ".",
+    BOT_BIO: "ᴘᴏᴡᴇʀᴇᴅ ʙʏ ʟᴜᴋᴀʙʀᴀɴᴅ🚀",
+    BOT_VERSION: packageJson.version || "5.0.0",
+    MENU_THEME: "ultra",
+    // Anti-viewonce / VV tracker
     ANTIVIEWONCE: "indm",
+    VV_TRACKER: "true",
+    AUTO_CHANNEL_LIKE: "true",
+    // DM permit action
+    DM_PERMIT_ACTION: "warn",
+    DM_PERMIT_MSG: "⚠️ *PM Permit Active!* You are not allowed to DM this bot. Please contact the owner.",
 };
 
 let initialized = false;
+
+const SETTINGS_CACHE_TTL = 30000;
+let _settingsCache = null;
+let _settingsCacheTs = 0;
+
+function invalidateSettingsCache() {
+    _settingsCache = null;
+    _settingsCacheTs = 0;
+}
 
 const GROUP_ONLY_SETTINGS = [
     "WELCOME_MESSAGE",
@@ -97,12 +132,27 @@ async function initializeSettings() {
         });
     }
 
+    // Force-sync settings that must always match the current default.
+    // Uses UPDATE (not upsert) so it works reliably on both SQLite and PostgreSQL.
+    const ALWAYS_SYNC = ["BOT_PIC", "BOT_REPO"];
+    for (const key of ALWAYS_SYNC) {
+        const defaultValue = DEFAULT_SETTINGS[key];
+        if (defaultValue) {
+            await SettingsDB.update({ value: defaultValue }, { where: { key } });
+        }
+    }
+
     initialized = true;
-    console.log("✅ Bot Settings Initialized");
+    console.log("✅ LUKA-AI Settings Initialized");
 }
 
 async function getSetting(key) {
     if (!initialized) await initializeSettings();
+
+    const now = Date.now();
+    if (_settingsCache && (now - _settingsCacheTs) < SETTINGS_CACHE_TTL) {
+        return _settingsCache[key] ?? DEFAULT_SETTINGS[key] ?? null;
+    }
 
     const record = await SettingsDB.findOne({ where: { key } });
     if (record) {
@@ -125,18 +175,28 @@ async function setSetting(key, value) {
         await record.save();
     }
 
+    invalidateSettingsCache();
     return true;
 }
 
 async function getAllSettings() {
     if (!initialized) await initializeSettings();
 
+    const now = Date.now();
+    if (_settingsCache && (now - _settingsCacheTs) < SETTINGS_CACHE_TTL) {
+        return { ..._settingsCache };
+    }
+
     const records = await SettingsDB.findAll();
-    const settings = {};
+    const settings = { ...DEFAULT_SETTINGS };
     for (const record of records) {
         settings[record.key] = record.value;
     }
-    return settings;
+
+    _settingsCache = settings;
+    _settingsCacheTs = now;
+
+    return { ...settings };
 }
 
 async function resetSetting(key) {
@@ -145,6 +205,7 @@ async function resetSetting(key) {
     const defaultValue = DEFAULT_SETTINGS[key];
     if (defaultValue !== undefined) {
         await setSetting(key, defaultValue);
+        invalidateSettingsCache();
         return defaultValue;
     }
     return null;
@@ -156,6 +217,7 @@ async function resetAllSettings() {
     for (const [key, defaultValue] of Object.entries(DEFAULT_SETTINGS)) {
         await setSetting(key, defaultValue);
     }
+    invalidateSettingsCache();
     return true;
 }
 
