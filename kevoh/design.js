@@ -1040,7 +1040,7 @@ ${preview}`,
             conText
         );
 
-        await react("✅");
+        await react("🚀");
     }
 );
 
