@@ -1,19 +1,19 @@
 
-const { gmd, commands } = require("../luka/gmdCmds");
+const { gmd, commands } = require("../kevo/gmdCmds");
 const {
   getSetting,
   setSetting,
   getAllSettings,
   resetSetting,
   resetAllSettings,
-} = require("../luka/database/settings");
+} = require("../kevo/database/settings");
 const {
   getGroupSetting,
   setGroupSetting,
   getEnabledGroupSettings,
   resetAllGroupSettings,
   getAllGroupSettings,
-} = require("../luka/database/groupSettings");
+} = require("../kevo/database/groupSettings");
 const { getSudoNumbers, clearAllSudo } = require("../luka/database/sudo");
 const {
   getAllUsersNotes,
@@ -21,7 +21,7 @@ const {
   updateNoteById,
   deleteAllNotes,
   NotesDB,
-} = require("../luka/database/notes");
+} = require("../kevo/database/notes");
 
 function parseBooleanInput(input) {
   if (!input) return null;
