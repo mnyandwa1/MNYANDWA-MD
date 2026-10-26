@@ -1,4 +1,18 @@
-
+/**
+ * design.js — Premium Bot Design & Menu Theme System
+ *
+ * Commands:
+ * .setmenu
+ * .previewmenu
+ * .setbotpic
+ * .setmenupic
+ * .setfooter
+ * .setcaption
+ * .setbotname
+ * .setexpiry
+ * .designinfo
+ * .resetdesign
+ */
 
 "use strict";
 
@@ -870,7 +884,7 @@ gmd(
 
                     const active =
                         key === current
-                            ? "  🚀 ACTIVE"
+                            ? "  ✅ ACTIVE"
                             : "";
 
                     return (
@@ -938,13 +952,13 @@ Send .setmenu to view all themes.`
         await sendMenuMsg(
             Guru,
             from,
-`🚀 *${THEMES[key].name} ACTIVATED*
+`✅ *${THEMES[key].name} ACTIVATED*
 
 ${preview}`,
             conText
         );
 
-        await react("🚀");
+        await react("✅");
     }
 );
 
@@ -1172,10 +1186,10 @@ Or quote an image and send:
                 );
             }
 
-            await react("🚀");
+            await react("✅");
 
             return reply(
-`🚀 Bot profile picture updated!
+`✅ Bot profile picture updated!
 
 🖼️ Your new profile picture is active.`
             );
@@ -1304,10 +1318,10 @@ Example:
                 finalUrl
             );
 
-            await react("🚀");
+            await react("✅");
 
             return reply(
-`🚀 Menu image updated!
+`✅ Menu image updated!
 
 🖼️ ${finalUrl}
 
@@ -1385,7 +1399,7 @@ Current:
 ${current || "Not set"}
 
 Example:
-.setfooter Powered by Mnyandwa md`
+.setfooter Powered by LUKA iT`
             );
         }
 
@@ -1394,10 +1408,10 @@ Example:
             q.trim()
         );
 
-        await react("🚀");
+        await react("✅");
 
         return reply(
-`🚀 Footer updated!
+`✅ Footer updated!
 
 ${q.trim()}`
         );
@@ -1463,10 +1477,10 @@ Example:
             q.trim()
         );
 
-        await react("🚀");
+        await react("✅");
 
         return reply(
-`🚀 Caption updated!
+`✅ Caption updated!
 
 ${q.trim()}`
         );
@@ -1539,10 +1553,10 @@ Example:
             );
         } catch {}
 
-        await react("🚀");
+        await react("✅");
 
         return reply(
-`🚀 Bot name updated!
+`✅ Bot name updated!
 
 🤖 ${q.trim()}`
         );
@@ -1645,10 +1659,10 @@ Example:
         const status =
             await expiryLine();
 
-        await react("🚀");
+        await react("✅");
 
         return reply(
-`🚀 Licence expiry updated!
+`✅ Licence expiry updated!
 
 🔒 ${status}`
         );
@@ -1736,7 +1750,7 @@ gmd(
                     : pic
                 : "Default";
 
-        await react("🚀");
+        await react("✅");
 
         return reply(
 `╭━━━━━━━━━━━━━━━━━━━━━━━━━━━━╮
@@ -1857,10 +1871,10 @@ to confirm.`
 
         ]);
 
-        await react("🚀");
+        await react("✅");
 
         return reply(
-`🚀 DESIGN RESET COMPLETE!
+`✅ DESIGN RESET COMPLETE!
 
 Default menu design restored.
 
