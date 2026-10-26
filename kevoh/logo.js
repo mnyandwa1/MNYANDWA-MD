@@ -1,5 +1,5 @@
 
-const { gmd, gmdBuffer } = require("../luka");
+const { gmd, gmdBuffer } = require("../kevo");
 const axios = require("axios");
 
 const logoEndpoints = [
