@@ -1,5 +1,5 @@
 
-const { gmd } = require("../luka");
+const { gmd } = require("../kevo");
 const path = require("path");
 const fs = require('fs').promises;
 const { sendButtons } = require('gifted-btns');
