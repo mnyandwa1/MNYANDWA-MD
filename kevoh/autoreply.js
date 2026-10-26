@@ -1,4 +1,4 @@
-const { gmd } = require("../kevi");
+const { gmd } = require("../kevo");
 const Database = require("better-sqlite3");
 const path     = require("path");
 const fs       = require("fs-extra");
@@ -12,7 +12,7 @@ const fs       = require("fs-extra");
 // ═══════════════════════════════════════════════════════════════════
 
 // ── Database ────────────────────────────────────────────────────────
-const DB_DIR = path.join(__dirname, "../kevi/database");
+const DB_DIR = path.join(__dirname, "../kevo/database");
 fs.ensureDirSync(DB_DIR);
 
 const db = new Database(path.join(DB_DIR, "autoreply.db"));
