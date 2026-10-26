@@ -1,6 +1,6 @@
 const { gmd }               = require("../kevo");
-const { getSetting, setSetting } = require("../luka/database/settings");
-const { sendGreeting, sendWellness } = require("../luka/scheduler");
+const { getSetting, setSetting } = require("../kevo/database/settings");
+const { sendGreeting, sendWellness } = require("../kevo/scheduler");
 
 // ═══════════════════════════════════════════════════════════════════
 //  SMART SETTINGS PANEL  ·  BLACK PANTHER MD
@@ -10,7 +10,7 @@ const { sendGreeting, sendWellness } = require("../luka/scheduler");
 // ═══════════════════════════════════════════════════════════════════
 
 const VALID_TZ_SAMPLES = [
-    "Africa/Nairobi","Africa/Lagos","Africa/Johannesburg","Africa/Cairo",
+    "Africa/mnyandwakelvin","Africa/Lagos","Africa/Johannesburg","Africa/Cairo",
     "Asia/Dubai","Asia/Kolkata","Europe/London","America/New_York",
     "America/Sao_Paulo","Australia/Sydney",
 ];
