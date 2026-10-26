@@ -1,5 +1,5 @@
 
-const { gmd, toAudio, toVideo, toPtt, stickerToImage, gmdFancy, gmdRandom, getSetting, runFFmpeg, getVideoDuration, gmdSticker } = require("../luka");
+const { gmd, toAudio, toVideo, toPtt, stickerToImage, gmdFancy, gmdRandom, getSetting, runFFmpeg, getVideoDuration, gmdSticker } = require("../kevo");
 const fs = require("fs").promises;
 const { StickerTypes } = require("wa-sticker-formatter");
 const { exec, execSync } = require("child_process");
