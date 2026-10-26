@@ -1,7 +1,7 @@
 {
-  "name": "luka-ai",
+  "name": "mnyandwa-md",
   "version": "5.0.0",
-  "description": "LUKABRAND 🐾 - Ultimate WhatsApp Bot by lukabrand",
+  "description": "mnyandwa1 🐾 - Ultimate WhatsApp Bot by mnyandwa1",
   "main": "./index.js",
   "type": "commonjs",
   "engines": {
@@ -21,7 +21,7 @@
     "whatsapp-bot",
     "whatsapp-md-bot"
   ],
-  "author": "LUKABRAND 🐾",
+  "author": "mnyandwa1 🐾",
   "license": "MIT",
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
