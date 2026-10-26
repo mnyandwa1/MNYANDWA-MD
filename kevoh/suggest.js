@@ -1,6 +1,6 @@
 "use strict";
 
-const { evt } = require("../luka/gmdCmds");
+const { evt } = require("../kevo/gmdCmds");
 
 // ─── LEVENSHTEIN DISTANCE ─────────────────────────────────────────────────────
 
