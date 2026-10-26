@@ -2,8 +2,8 @@
 const { gmd } = require("../kevo");
 const axios = require("axios");
 const { sendButtons } = require("gifted-btns");
-const { getContextInfo } = require("../luka/contextInfo");
-const { getLidMapping } = require("../luka/connection/groupCache");
+const { getContextInfo } = require("../kevo/contextInfo");
+const { getLidMapping } = require("../kevo/connection/groupCache");
 const {
     initTempMailDB,
     setUserEmail,
