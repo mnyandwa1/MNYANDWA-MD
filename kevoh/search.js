@@ -1,4 +1,4 @@
-const { gmd, gmdSticker } = require("../luka"),
+const { gmd, gmdSticker } = require("../kevo"),
   fs = require("fs").promises,
   fss = require("fs"),
   os = require("os"),
