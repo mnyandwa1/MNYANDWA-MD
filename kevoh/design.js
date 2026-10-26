@@ -1186,10 +1186,10 @@ Or quote an image and send:
                 );
             }
 
-            await react("✅");
+            await react("🚀");
 
             return reply(
-`✅ Bot profile picture updated!
+`🚀 Bot profile picture updated!
 
 🖼️ Your new profile picture is active.`
             );
