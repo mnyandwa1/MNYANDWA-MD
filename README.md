@@ -43,3 +43,4 @@
   <b>© 2026 MNYANDWA-MD</b><br>
   ⚡ ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴍɴʏᴀɴᴅᴡᴀ
 </p>
+owner mnyandwakelvin
