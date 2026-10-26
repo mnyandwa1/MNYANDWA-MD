@@ -26,7 +26,7 @@ gmd(
         await react("📋");
         const text = await buildThemedMenu(conText, Guru);
         await sendMenuMsg(Guru, from, text, conText);
-        await react("✅");
+        await react("🚀");
     }
 );
 
