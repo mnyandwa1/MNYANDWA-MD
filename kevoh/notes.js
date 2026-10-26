@@ -1,5 +1,5 @@
 
-const { gmd } = require("../luka");
+const { gmd } = require("../kevo");
 const {
     initNotesDB,
     addNote,
@@ -9,7 +9,7 @@ const {
     deleteNote,
     deleteAllNotes,
 } = require("../luka/database/notes");
-const { getContextInfo } = require("../luka/contextInfo");
+const { getContextInfo } = require("../kevo/contextInfo");
 const { sendButtons } = require("gifted-btns");
 
 const more = String.fromCharCode(8206);
