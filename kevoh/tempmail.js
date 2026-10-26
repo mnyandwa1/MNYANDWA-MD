@@ -1,5 +1,5 @@
 
-const { gmd } = require("../luka");
+const { gmd } = require("../kevo");
 const axios = require("axios");
 const { sendButtons } = require("gifted-btns");
 const { getContextInfo } = require("../luka/contextInfo");
@@ -11,7 +11,7 @@ const {
     getUserEmailWithExpiry,
     deleteUserEmail,
     EXPIRY_MINUTES,
-} = require("../luka/database/tempmail");
+} = require("../kevo/database/tempmail");
 
 initTempMailDB();
 
