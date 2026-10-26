@@ -1,4 +1,4 @@
-const { gmd }               = require("../luka");
+const { gmd }               = require("../kevo");
 const { getSetting, setSetting } = require("../luka/database/settings");
 const { sendGreeting, sendWellness } = require("../luka/scheduler");
 
