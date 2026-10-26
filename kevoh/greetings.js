@@ -1,6 +1,6 @@
 
-const { gmd } = require("../luka");
-const { getSetting, setSetting } = require("../luka/database/settings");
+const { gmd } = require("../kevo");
+const { getSetting, setSetting } = require("../kevo/database/settings");
 const {
     addGreetingsChat,
     removeGreetingsChat,
@@ -8,7 +8,7 @@ const {
     hasGreetingsChat,
     countGreetingsChats,
 } = require("../luka/database/greetings");
-const { sendGreeting } = require("../luka/scheduler");
+const { sendGreeting } = require("../kevo/scheduler");
 
 gmd(
     {
