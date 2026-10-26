@@ -32,12 +32,12 @@ RUN rm -f .replit replit.md 2>/dev/null || true
 
 # Environment defaults (all can be overridden via Heroku Config Vars)
 ENV NODE_ENV=production \
-    BOT_NAME="BLACK PANTHER MD" \
-    OWNER_NAME="Koyoteh" \
-    OWNER_NUMBER="254105521300" \
+    BOT_NAME="MNYANDWA-MD" \
+    OWNER_NAME="kelvin mnyandwa" \
+    OWNER_NUMBER="255672514834" \
     BOT_PREFIX="." \
     MODE="public" \
-    TIME_ZONE="Africa/Nairobi" \
+    TIME_ZONE="Africa/tanzania" \
     AUTO_BIO="true" \
     AUTO_LIKE_STATUS="true" \
     AUTO_READ_STATUS="true" \
