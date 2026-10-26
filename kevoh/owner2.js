@@ -1,5 +1,5 @@
 
-const { gmd, commands, getSetting } = require("../luka");
+const { gmd, commands, getSetting } = require("../kevo");
 const fs = require("fs").promises;
 const fsA = require("node:fs");
 const { S_WHATSAPP_NET } = require("@whiskeysockets/baileys");
@@ -62,8 +62,8 @@ gmd(
 
     await react("⏳");
     try {
-      const gift = require("../luka");
-      const _rawDb = require("../luka/database/database").DATABASE;
+      const gift = require("../kevo");
+      const _rawDb = require("../kevo/database/database").DATABASE;
       const settings = await gift.getAllSettings();
       const { getSetting, setSetting, getAllSettings, commands } = gift;
       const prefix = settings.PREFIX;
