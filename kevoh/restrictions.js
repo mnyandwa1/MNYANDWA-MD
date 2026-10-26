@@ -1,5 +1,5 @@
 
-const { gmd } = require("../luka");
+const { gmd } = require("../kevo");
 const { getGroupSetting, setGroupSetting } = require("../luka/database/groupSettings");
 const { getSetting, setSetting } = require("../luka/database/settings");
 
