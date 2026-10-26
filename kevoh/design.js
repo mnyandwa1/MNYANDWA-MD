@@ -1,18 +1,4 @@
-/**
- * design.js — Premium Bot Design & Menu Theme System
- *
- * Commands:
- * .setmenu
- * .previewmenu
- * .setbotpic
- * .setmenupic
- * .setfooter
- * .setcaption
- * .setbotname
- * .setexpiry
- * .designinfo
- * .resetdesign
- */
+
 
 "use strict";
 
