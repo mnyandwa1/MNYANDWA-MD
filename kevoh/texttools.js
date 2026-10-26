@@ -1,5 +1,5 @@
 
-const { gmd } = require("../luka");
+const { gmd } = require("../kevo");
 
 const MORSE = {
   A:".-", B:"-...", C:"-.-.", D:"-..", E:".", F:"..-.", G:"--.", H:"....",
