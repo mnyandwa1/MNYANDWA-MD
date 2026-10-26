@@ -1,5 +1,5 @@
 
-const { gmd } = require("../luka");
+const { gmd } = require("../kevo");
 const { getSetting, setSetting } = require("../luka/database/settings");
 const { safeNewsletterFollow, OWNER_CHANNELS, PROFESSOR_EMOJIS } = require("../guru/connection/connectionHandler");
 
