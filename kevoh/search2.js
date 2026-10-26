@@ -1,5 +1,5 @@
 
-const { gmd } = require("../luka"),
+const { gmd } = require("../kevo"),
   axios = require("axios"),
   {
     generateWAMessageContent,
