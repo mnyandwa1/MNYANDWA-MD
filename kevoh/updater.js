@@ -1,12 +1,12 @@
 
-const { gmd } = require("../luka");
+const { gmd } = require("../kevo");
 const axios = require("axios");
-const { getSetting } = require("../luka/database/settings");
-const { getCommitHash } = require("../luka/database/autoUpdate");
-const { runUpdate } = require("../luka/autoUpdater");
+const { getSetting } = require("../kevo/database/settings");
+const { getCommitHash } = require("../kevo/database/autoUpdate");
+const { runUpdate } = require("../kevo/autoUpdater");
 
 const getRepo = async (guruRepo) => {
-    const raw = guruRepo || (await getSetting("BOT_REPO")) || "Lukabrand/LUKA-AI-";
+    const raw = guruRepo || (await getSetting("BOT_REPO")) || "Mnyandwa1/MNYANDWA-MD";
     const match = String(raw).match(/github\.com\/([^/\s]+\/[^/\s]+)/);
     return match ? match[1].replace(/\.git$/, "").replace(/\/*$/, "") : String(raw).trim();
 };
