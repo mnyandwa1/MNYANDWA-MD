@@ -9,8 +9,8 @@ const si = (str) => [...(str || '')].map(c => {
 }).join('');
 // ───────────────────────────────────────────────────────────────────────────
 
-const { gmd } = require("../luka");
-const { getSetting, setSetting } = require("../luka/database/settings");
+const { gmd } = require("../kevo");
+const { getSetting, setSetting } = require("../kevo/database/settings");
 
 const OWNER_ONLY = true;
 
