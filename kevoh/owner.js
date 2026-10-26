@@ -1,4 +1,4 @@
-const { gmd, commands, getSetting } = require("../luka");
+const { gmd, commands, getSetting } = require("../kevo");
 const fs = require("fs").promises;
 const fsA = require("node:fs");
 const { S_WHATSAPP_NET } = require("@whiskeysockets/baileys");
@@ -9,7 +9,7 @@ const {
   groupCache,
   getGroupMetadata,
   cachedGroupMetadata,
-} = require("../luka/connection/groupCache");
+} = require("../kevo/connection/groupCache");
 
 const pendingCmdFiles = new Map();
 
