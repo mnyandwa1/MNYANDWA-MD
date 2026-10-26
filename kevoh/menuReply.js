@@ -5,7 +5,7 @@
 //  command list. Uses getSortedCategories() so it always matches
 //  whatever the main menu displays — no hardcoded lists.
 // ─────────────────────────────────────────────────────────────────
-const { gmd } = require("../luka");
+const { gmd } = require("../kevo");
 const { getMenuState, clearMenuState } = require("./lib/menuState.cjs");
 const { getSortedCategories } = require("./design");
 
@@ -26,7 +26,7 @@ function buildChunks(num, prefix) {
     const total = cmds.length;
 
     const header = `⚡ ──「 *${label}* 」──\n▢ ${total} command${total !== 1 ? "s" : ""} available\n\n`;
-    const footer = `\n└──✦ _ᴘᴏᴡᴇʀᴇᴅ ʙʏ ʟᴜᴋᴀʙʀᴀɴᴅ_ ✦──`;
+    const footer = `\n└──✦ _ᴘᴏᴡᴇʀᴇᴅ ʙʏ KEVOOTZ_ ✦──`;
 
     if (!total) {
         return [`${header}▢ No commands found in this category yet.\n${footer}`];
