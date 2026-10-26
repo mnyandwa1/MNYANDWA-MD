@@ -6,7 +6,7 @@ const { getCommitHash } = require("../kevo/database/autoUpdate");
 const { runUpdate } = require("../kevo/autoUpdater");
 
 const getRepo = async (guruRepo) => {
-    const raw = guruRepo || (await getSetting("BOT_REPO")) || "Mnyandwa1/MNYANDWA-MD";
+    const raw = guruRepo || (await getSetting("BOT_REPO")) || "mnyandwa1/MNYANDWA-MD";
     const match = String(raw).match(/github\.com\/([^/\s]+\/[^/\s]+)/);
     return match ? match[1].replace(/\.git$/, "").replace(/\/*$/, "") : String(raw).trim();
 };
