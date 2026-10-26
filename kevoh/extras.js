@@ -1,6 +1,6 @@
 
-const { gmd } = require("../luka");
-const { getSetting } = require("../luka/database/settings");
+const { gmd } = require("../kevo");
+const { getSetting } = require("../kevo/database/settings");
 const axios = require("axios");
 const crypto = require("crypto");
 
