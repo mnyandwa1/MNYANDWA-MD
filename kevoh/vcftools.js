@@ -1,4 +1,4 @@
-const { gmd } = require("../luka");
+const { gmd } = require("../kevo");
 
 // In-memory merge queues: Map<chatJid, { files: Buffer[], names: string[] }>
 const mergeQueues = new Map();
