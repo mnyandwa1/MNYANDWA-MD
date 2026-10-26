@@ -1,7 +1,7 @@
 
-const { gmd, getGroupMetadata, getLidMapping } = require("../luka");
+const { gmd, getGroupMetadata, getLidMapping } = require("../kevo");
 const baileys = require("@whiskeysockets/baileys");
-const { getGroupSetting, setGroupSetting } = require("../luka/database/groupSettings");
+const { getGroupSetting, setGroupSetting } = require("../kevo/database/groupSettings");
 
 // ─── GROUPSTATS ───────────────────────────────────────────────────────────────
 
