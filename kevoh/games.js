@@ -1,5 +1,5 @@
 
-const { gmd } = require("../luka");
+const { gmd } = require("../kevo");
 const {
     createGame,
     joinGame,
@@ -8,7 +8,7 @@ const {
     makeMove,
     endGame,
     initGamesDB,
-} = require("../luka/database/games");
+} = require("../kevo/database/games");
 
 const {
     createWcgGame,
@@ -20,7 +20,7 @@ const {
     eliminatePlayer,
     endWcgGame,
     initWcgDB,
-} = require("../luka/database/wcgGame");
+} = require("../kevo/database/wcgGame");
 
 const {
     createDiceGame,
@@ -30,7 +30,7 @@ const {
     playerRoll,
     endDiceGame,
     initDiceDB,
-} = require("../luka/database/diceGame");
+} = require("../kevo/database/diceGame");
 
 const { 
     clearGameTimeout, 
@@ -45,7 +45,7 @@ const {
     handleAiDiceRoll,
     gameTimeouts,
     diceTimeouts,
-} = require("../luka/gameHandler");
+} = require("../kevo/gameHandler");
 
 const {
     wcgTimeouts,
@@ -54,7 +54,7 @@ const {
     setWcgJoinTimeout,
     formatScores,
     getDiceEmoji,
-} = require("../luka/wcg");
+} = require("../kevo/wcg");
 
 
 const {
@@ -62,7 +62,7 @@ const {
     rollDice: aiRollDice,
     findBestTttMove,
     BOT_JID,
-} = require("../luka/gameAI");
+} = require("../kevo/gameAI");
 
 initGamesDB();
 initWcgDB();
