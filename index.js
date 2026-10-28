@@ -1,310 +1,147 @@
-
+// ════════════════════════════════════════════════════════════════════════════
+//  GURU CORE — Central Export Hub
+// ════════════════════════════════════════════════════════════════════════════
 
 "use strict";
 
-// ─── Polyfills (must be first) ───────────────────────────────────────────────
-require("events").EventEmitter.defaultMaxListeners = 960;
-if (!globalThis.crypto) globalThis.crypto = require("crypto").webcrypto;
-try { if (typeof File === "undefined") globalThis.File = require("buffer").File; } catch (_) {}
+// ─── Command Bus ─────────────────────────────────────────────────────────────
+const { evt, gmd, commands } = require("./gmdCmds");
 
-// ─── Node & Third-Party ──────────────────────────────────────────────────────
-const path    = require("path");
-const http    = require("http");
-const express = require("express");
+// ─── Config ──────────────────────────────────────────────────────────────────
+const config = require("./config");
 
-const {
-    default: makeWASocket,
-    jidNormalizedUser,
-    fetchLatestWaWebVersion,
-} = require("@whiskeysockets/baileys");
-
-// ─── Guru Core ───────────────────────────────────────────────────────────────
-require("./kevo/gmdHelpers");
+// ─── Database Modules ────────────────────────────────────────────────────────
+const { DATABASE, syncDatabase }                        = require("./database/database");
+const { loadPersistedLidMappings, persistLidMapping }   = require("./database/lidMapping");
+const { UpdateDB, setCommitHash, getCommitHash }        = require("./database/autoUpdate");
+const { SudoDB, getSudoNumbers, setSudo, delSudo }      = require("./database/sudo");
 
 const {
-    logger, commands,
-    loadSession, useSQLiteAuthState,
-    safeNewsletterFollow, safeGroupAcceptInvite,
-    setupConnectionHandler, setupGroupEventsListeners,
-    initializeLidStore, getAllSettings, DEFAULT_SETTINGS,
-    createSocketConfig, createContext,
-    syncDatabase, initializeSettings, initializeGroupSettings,
-    loadPlugins,
-} = require("./kevo");
+    SettingsDB, initializeSettings, getSetting, setSetting,
+    getAllSettings, resetSetting, resetAllSettings, DEFAULT_SETTINGS,
+} = require("./database/settings");
 
-const { startCleanup, SQLiteStore }      = require("./kevo/database/messageStore");
-const { setupCommandHandler }            = require("./kevo/messageHandler");
 const {
-    setupAutoReact, setupAntiDelete, setupAutoBio,
-    setupAntiCall, setupPresence, setupChatBotAndAntiLink,
-    setupAntiEdit, setupStatusHandlers,
-} = require("./kevo/eventHandlers");
+    GroupSettingsDB, initializeGroupSettings, getGroupSetting,
+    setGroupSetting, getAllGroupSettings, resetGroupSetting, GROUP_SETTING_DEFAULTS,
+} = require("./database/groupSettings");
 
-// ─── Constants ───────────────────────────────────────────────────────────────
-const PORT            = process.env.PORT || 5000;
-const SESSION_DIR     = path.join(__dirname, "kevo", "session");
-const PLUGINS_DIR     = path.join(__dirname, "kevoh");
-const MEMORY_LIMIT    = 400 * 1024 * 1024; // 400 MB
-const AUTO_RESTART_MS = 24 * 60 * 60 * 1000; // 24 hours
+// ─── Helpers & Context ───────────────────────────────────────────────────────
+const { createContext, createContext2, createFakeContact } = require("./gmdHelpers");
 
-logger.level = "silent";
+// ─── Media & Upload Utilities ────────────────────────────────────────────────
+const {
+    getMediaBuffer, getFileContentType, bufferToStream,
+    uploadToGuruCdn, uploadToGithubCdn,
+    uploadToPixhost, uploadToImgBB, uploadToCatbox,
+} = require("./gmdFunctions3");
 
-// ─── Mutable State ───────────────────────────────────────────────────────────
-let GuruSocket = null;
-let store      = null;
-let botSettings = {};
+// ─── Core Functions & Event Handlers ─────────────────────────────────────────
+const {
+    logger, emojis,
+    GuruAutoReact, GuruTechApi, GuruApiKey,
+    GuruAntiLink, GuruAntibad, GuruAntiBot, GuruAntiGroupMention,
+    GuruAutoBio, GuruChatBot, GuruPresence,
+    GuruAntiDelete, GuruAnticall, GuruAntiViewOnce, GuruAntiEdit,
+    setupVVTracker, GuruAntiSticker,
+} = require("./gmdFunctions2");
 
-// ════════════════════════════════════════════════════════════════════════════
-//  WEB SERVER
-// ════════════════════════════════════════════════════════════════════════════
+const { handleGameMessage } = require("./gameHandler");
 
-function startWebServer() {
-    const app = express();
+const {
+    toAudio, toVideo, toPtt, formatVideo, formatAudio,
+    monospace, runtime, sleep, gmdFancy,
+    GuruUploader, stickerToImage, formatBytes,
+    gmdBuffer, webp2mp4File, gmdJson, latestWaVersion,
+    gmdRandom, isUrl, gmdStore, isNumber,
+    loadSession, useSQLiteAuthState, verifyJidState,
+    runFFmpeg, getVideoDuration, gmdSticker, copyFolderSync,
+    gitRepoRegex, MAX_MEDIA_SIZE, getFileSize,
+    getMimeCategory, getMimeFromUrl, MIME_EXTENSIONS,
+    getExtensionFromMime, isTextContent,
+} = require("./gmdFunctions");
 
-    app.use(express.json());
-    app.use(express.static("kevo"));
-    app.get("/",       (_req, res) => res.sendFile(path.join(__dirname, "kevo", "guru.html")));
-    app.get("/pair",   (_req, res) => res.sendFile(path.join(__dirname, "kevo", "pair.html")));
-    app.get("/health", (_req, res) => res.status(200).json({ status: "alive", uptime: process.uptime() }));
-
-    // ── Pairing API ───────────────────────────────────────────────────────────
-    const pairing = require("./kevo/pairing");
-
-    app.post("/api/pair", async (req, res) => {
-        const phone = (req.body?.phone || "").replace(/\D/g, "");
-        if (!phone || phone.length < 7) {
-            return res.json({ ok: false, error: "Invalid phone number." });
-        }
-        pairing.startPairing(phone).catch(() => {});
-        res.json({ ok: true });
-    });
-
-    app.get("/api/pair/status", (_req, res) => {
-        res.json(pairing.getStatus());
-    });
-
-    app.get("/api/pair/cancel", (_req, res) => {
-        pairing.cancelPairing();
-        res.json({ ok: true });
-    });
-
-    const server = app.listen(PORT, "0.0.0.0", () =>
-        console.log(`✅ Server Running on Port: ${PORT}`)
-    );
-
-    server.on("error", (err) => {
-        if (err.code !== "EADDRINUSE") return console.error("Server error:", err.message);
-        console.warn(`⚠️ Port ${PORT} in use — retrying in 3s...`);
-        setTimeout(() => {
-            server.close(() => {
-                const retry = app.listen(PORT, "0.0.0.0", () =>
-                    console.log(`✅ Server Running on Port: ${PORT}`)
-                );
-                retry.on("error", (e) => console.error("Retry failed:", e.message));
-            });
-        }, 3000);
-    });
-}
+// ─── Connection Layer ─────────────────────────────────────────────────────────
+const {
+    groupCache, getGroupMetadata, updateGroupCache, deleteGroupCache, clearGroupCache,
+    setupGroupCacheListeners, cachedGroupMetadata,
+    initializeLidStore, createSocketConfig, getLidMapping,
+    safeNewsletterFollow, safeGroupAcceptInvite, setupConnectionHandler,
+    standardizeJid, serializeMessage, downloadMediaMessage,
+    loadPlugins, findCommand, findBodyCommand, createHelpers,
+    getGroupInfo, buildSuperUsers,
+    setupGroupEventsListeners, getProfilePic, getDisplayNumber,
+} = require("./connection");
 
 // ════════════════════════════════════════════════════════════════════════════
-//  SYSTEM TASKS
+//  EXPORTS
 // ════════════════════════════════════════════════════════════════════════════
 
-function startSystemTasks() {
-    // Memory watchdog — GC when heap exceeds limit
-    setInterval(() => {
-        if (process.memoryUsage().heapUsed > MEMORY_LIMIT && global.gc) global.gc();
-    }, 60_000);
+module.exports = {
 
-    // Health ping — keeps the server warm
-    setInterval(() => {
-        http.get(`http://localhost:${PORT}/health`, () => {}).on("error", () => {});
-    }, 240_000);
+    // Command bus
+    evt, gmd, commands,
 
-    // Scheduled 24-hour auto-restart
-    setTimeout(() => {
-        console.log("🔄 [AUTO-RESTART] 24-hour restart triggered.");
-        process.exit(0);
-    }, AUTO_RESTART_MS);
+    // Config
+    config,
 
-    console.log(`✅ Auto-restart scheduled in 24 hours (${new Date(Date.now() + AUTO_RESTART_MS).toLocaleTimeString()})`);
-}
+    // Database — core
+    DATABASE, syncDatabase,
+    loadPersistedLidMappings, persistLidMapping,
+    UpdateDB, setCommitHash, getCommitHash,
 
-// ════════════════════════════════════════════════════════════════════════════
-//  EXPIRY WATCHDOG
-// ════════════════════════════════════════════════════════════════════════════
+    // Database — sudo
+    SudoDB, getSudoNumbers, setSudo, delSudo,
 
-function startExpiryWatchdog() {
-    try {
-        const { startExpiryWatchdog: watch } = require("./kevo/expiry");
+    // Database — settings
+    SettingsDB, initializeSettings, getSetting, setSetting,
+    getAllSettings, resetSetting, resetAllSettings, DEFAULT_SETTINGS,
 
-        const notifyOwner = async (text) => {
-            const ownerNum = (process.env.OWNER_NUMBER || "").replace(/[^0-9]/g, "");
-            const ownerJid = `${ownerNum}@s.whatsapp.net`;
-            if (global._botSocket && ownerJid.length > 10) {
-                await global._botSocket.sendMessage(ownerJid, { text }).catch(() => {});
-            }
-        };
+    // Database — group settings
+    GroupSettingsDB, initializeGroupSettings, getGroupSetting,
+    setGroupSetting, getAllGroupSettings, resetGroupSetting, GROUP_SETTING_DEFAULTS,
 
-        watch(
-            async (msg) => {
-                global._licenceExpired = true;
-                console.warn("[EXPIRY] ⛔ Licence expired — commands locked.");
-                await notifyOwner(`⛔ *BLACK PANTHER MD — LICENCE EXPIRED*\n\n${msg}\n\n_Commands are locked. Renew your licence to continue._`);
-            },
-            async (warnMsg) => notifyOwner(warnMsg),
-        );
-    } catch (e) {
-        console.warn("[EXPIRY] Watchdog not started:", e.message);
-    }
-}
+    // Context / helpers
+    createContext, createContext2, createFakeContact,
+    emojis, logger,
 
-// ════════════════════════════════════════════════════════════════════════════
-//  DATABASE INIT
-// ════════════════════════════════════════════════════════════════════════════
+    // Media utilities
+    getMediaBuffer, getFileContentType, bufferToStream,
+    uploadToGuruCdn, uploadToGithubCdn,
+    uploadToPixhost, uploadToImgBB, uploadToCatbox,
 
-async function initDatabase() {
-    await syncDatabase();
-    await initializeSettings();
-    await initializeGroupSettings();
-    botSettings = await getAllSettings();
-}
+    // API keys
+    GuruTechApi, GuruApiKey,
 
-// ════════════════════════════════════════════════════════════════════════════
-//  BOT BOOT
-// ════════════════════════════════════════════════════════════════════════════
+    // Bot event functions
+    GuruAutoReact, GuruAntiLink, GuruAntibad, GuruAntiBot,
+    GuruAntiGroupMention, GuruAutoBio, GuruChatBot, GuruPresence,
+    GuruAntiDelete, GuruAnticall, GuruAntiViewOnce, GuruAntiEdit,
+    setupVVTracker, GuruAntiSticker,
 
-async function startGuru() {
-    try {
-        const { version }        = await fetchLatestWaWebVersion();
-        const sessionDbPath      = path.join(SESSION_DIR, "session.db");
-        const { state, saveCreds } = await useSQLiteAuthState(sessionDbPath);
+    // Games
+    handleGameMessage,
 
-        if (store) store.destroy();
-        store = new SQLiteStore();
+    // Format / transform
+    toAudio, toVideo, toPtt, formatVideo, formatAudio,
+    monospace, runtime, sleep, gmdFancy,
+    GuruUploader, stickerToImage, formatBytes,
+    gmdBuffer, webp2mp4File, gmdJson, gmdRandom, gmdStore, gmdSticker,
+    latestWaVersion, isUrl, isNumber,
+    loadSession, useSQLiteAuthState, verifyJidState,
+    runFFmpeg, getVideoDuration, copyFolderSync,
+    gitRepoRegex, MAX_MEDIA_SIZE, getFileSize,
+    getMimeCategory, getMimeFromUrl, MIME_EXTENSIONS,
+    getExtensionFromMime, isTextContent,
 
-        // Build socket
-        const socketConfig = createSocketConfig(version, state, logger);
-        socketConfig.getMessage = async (key) => {
-            if (!store) return { conversation: "Error occurred" };
-            const msg = await store.loadMessage(key.remoteJid, key.id);
-            return msg?.message ?? undefined;
-        };
-
-        GuruSocket            = makeWASocket(socketConfig);
-        global._botSocket     = GuruSocket;
-        store.bind(GuruSocket.ev);
-
-        // Persist credentials on update
-        GuruSocket.ev.process(async (events) => {
-            if (events["creds.update"]) await saveCreds();
-        });
-
-        // Attach event handlers
-        setupAutoReact(GuruSocket);
-        setupAntiDelete(GuruSocket);
-        setupAutoBio(GuruSocket);
-        setupAntiCall(GuruSocket);
-        setupPresence(GuruSocket);
-        setupChatBotAndAntiLink(GuruSocket);
-        setupAntiEdit(GuruSocket);
-        setupStatusHandlers(GuruSocket);
-        setupGroupEventsListeners(GuruSocket);
-
-        // Load plugins & commands
-        loadPlugins(PLUGINS_DIR);
-        setupCommandHandler(GuruSocket);
-
-        // Connection lifecycle
-        setupConnectionHandler(GuruSocket, SESSION_DIR, startGuru, {
-            onOpen: (socket) => onBotConnected(socket),
-        });
-
-        // Cleanup on exit
-        process.on("SIGINT",  () => store?.destroy());
-        process.on("SIGTERM", () => store?.destroy());
-
-    } catch (err) {
-        console.error("❌ Socket init error:", err.message);
-        setTimeout(startGuru, 5_000);
-    }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-//  ON CONNECTED
-// ════════════════════════════════════════════════════════════════════════════
-
-async function onBotConnected(socket) {
-    const s = await getAllSettings();
-
-    // Follow channel & join group
-    await safeNewsletterFollow(socket, s.NEWSLETTER_JID);
-    await safeGroupAcceptInvite(socket, s.GC_JID);
-    await initializeLidStore(socket);
-
-    // Start scheduler
-    try {
-        const { startScheduler } = require("./kevo/scheduler");
-        startScheduler(socket);
-    } catch (e) {
-        console.error("[Scheduler] start error:", e.message);
-    }
-
-    // Post-connect message
-    setTimeout(() => sendStartupMessage(socket, s), 5_000);
-}
-
-async function sendStartupMessage(socket, s) {
-    try {
-        const d             = DEFAULT_SETTINGS;
-        const totalCommands = commands.filter((c) => c.pattern && !c.dontAddCommandList).length;
-        const botName       = (s.BOT_NAME || d.BOT_NAME).toUpperCase();
-        const modeLabel     = s.MODE === "public" ? "🌐 PUBLIC" : "🔒 PRIVATE";
-
-        console.log("💜 Connected to WhatsApp — Active!");
-
-        if (s.STARTING_MESSAGE !== "true") return;
-
-        const { expiryLine } = require("./kevo/expiry");
-        const expLine        = await expiryLine().catch(() => "✅ Active");
-
-        const msg = [
-    `╭━━⟮ ⚡ ${botName} ⟯━━┈⊷`,
-    `┃ 🟢 Status  : ✅ ONLINE`,
-    `┃ 📊 Plugins : ${totalCommands}`,
-    `┃ 📌 Prefix  : ${s.PREFIX || d.PREFIX}`,
-    `┃ 🌐 Mode    : ${modeLabel}`,
-    `┃ ⏳ Licence : ${expLine}`,
-    `╰━━⟮ ✦ Powered by Mnyandwa Md ✦ ⟯━━┈⊷`,
-    ``,
-    `> _Allow a few seconds to sync._`,
-].join("\n");
-
-        const destJid = jidNormalizedUser(socket.user.id);
-        let ctx = {};
-        try { ctx = await createContext(botName, { title: "BOT INTEGRATED", body: "Status: Ready for Use" }); } catch (_) {}
-
-        await socket.sendMessage(destJid, { text: msg, ...ctx }, {
-            disappearingMessagesInChat: true,
-            ephemeralExpiration: 300,
-        });
-    } catch (err) {
-        console.error("Post-connection error:", err.message);
-    }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-//  BOOTSTRAP
-// ════════════════════════════════════════════════════════════════════════════
-
-(async () => {
-    startWebServer();
-    startSystemTasks();
-    startExpiryWatchdog();
-    startCleanup();
-
-    await loadSession();
-    await initDatabase();
-
-    startGuru();
-})();
+    // Connection
+    groupCache, getGroupMetadata, updateGroupCache,
+    deleteGroupCache, clearGroupCache,
+    setupGroupCacheListeners, cachedGroupMetadata,
+    initializeLidStore, createSocketConfig, getLidMapping,
+    safeNewsletterFollow, safeGroupAcceptInvite, setupConnectionHandler,
+    standardizeJid, serializeMessage, downloadMediaMessage,
+    loadPlugins, findCommand, findBodyCommand,
+    createHelpers, getGroupInfo, buildSuperUsers,
+    setupGroupEventsListeners, getProfilePic, getDisplayNumber,
+};
