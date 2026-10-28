@@ -2,385 +2,384 @@
 "use strict";
 
 const os = require("os");
-const moment = require("moment-timezone");
-const { performance } = require("perf_hooks");
+const { gmd, commands } = require("../kevo");
 
-const { gmd } = require("../kevo");
+const {
+    buildThemedMenu,
+    sendMenuMsg,
+    getSortedCategories,
+    CAT_ICONS,
+    getMenuPicUrl,
+} = require("./design");
+
+const { sendButtons } = require("gifted-btns");
+
+// ═══════════════════════════════════════════════
+//              MNYANDWA-MD
+//              GENERAL COMMANDS
+// ═══════════════════════════════════════════════
 
 const BOT_NAME = "MNYANDWA-MD";
-const DEFAULT_PREFIX = ".";
-const DEFAULT_TIMEZONE = "Africa/Dar_es_Salaam";
+const BOT_VERSION = "1.0.0";
+const BOT_OWNER = "MNYANDWA";
+const BOT_FOOTER = "POWERED BY MNYANDWA-MD";
 
-// Preserve the original process start time across module reloads.
 if (!global._botStartTime) {
     global._botStartTime = Date.now();
 }
 
-// Avoid displaying raw errors, credentials or session information.
-function logError(label, error) {
-    console.error(
-        `[${BOT_NAME}] ${label}:`,
-        error?.message || "Unknown error"
+function getUptime() {
+    const total = Math.floor(
+        (Date.now() - global._botStartTime) / 1000
     );
-}
-
-function formatDuration(seconds) {
-    const total = Math.max(0, Math.floor(seconds));
 
     const days = Math.floor(total / 86400);
     const hours = Math.floor((total % 86400) / 3600);
     const minutes = Math.floor((total % 3600) / 60);
-    const secs = total % 60;
+    const seconds = total % 60;
 
     return [
         days ? `${days}d` : null,
         hours ? `${hours}h` : null,
         minutes ? `${minutes}m` : null,
-        `${secs}s`,
+        `${seconds}s`,
     ].filter(Boolean).join(" ");
 }
 
-function getUptime() {
-    return formatDuration(
-        (Date.now() - global._botStartTime) / 1000
-    );
-}
-
-function getMemoryInfo() {
-    const used = process.memoryUsage();
-    const totalSystem = os.totalmem();
-    const freeSystem = os.freemem();
+function getSystemInfo() {
+    const totalMemory = os.totalmem();
+    const freeMemory = os.freemem();
+    const usedMemory = totalMemory - freeMemory;
 
     return {
-        rss: (used.rss / 1024 / 1024).toFixed(1),
-        heapUsed: (used.heapUsed / 1024 / 1024).toFixed(1),
-        heapTotal: (used.heapTotal / 1024 / 1024).toFixed(1),
-        systemUsed: ((totalSystem - freeSystem) / 1024 / 1024).toFixed(0),
-        systemTotal: (totalSystem / 1024 / 1024).toFixed(0),
+        platform: os.platform(),
+        architecture: os.arch(),
+        cpus: os.cpus().length,
+        totalRam: (totalMemory / 1024 ** 3).toFixed(2),
+        usedRam: (usedMemory / 1024 ** 3).toFixed(2),
+        freeRam: (freeMemory / 1024 ** 3).toFixed(2),
     };
 }
 
-// ─── MENU ────────────────────────────────────────────────────────────
+// ─── MENU ─────────────────────────────────────
 
-gmd(
-    {
-        pattern: "menu",
-        aliases: ["help", "cmds", "commands", "start"],
-        react: "📋",
-        category: "general",
-        description: "Show the bot command menu",
-    },
-    async (from, Guru, conText) => {
-        const { react, mek } = conText;
+gmd({
+    pattern: "menu",
+    aliases: ["help", "cmds", "commands", "start"],
+    react: "📋",
+    category: "general",
+    description: "Show MNYANDWA-MD command menu",
+}, async (from, Guru, conText) => {
+    const { react } = conText;
 
-        try {
-            const { buildThemedMenu, sendMenuMsg } = require("./design");
+    try {
+        await react("📋");
 
-            if (typeof buildThemedMenu !== "function" ||
-                typeof sendMenuMsg !== "function") {
-                throw new Error("Menu functions are unavailable");
-            }
+        const text = await buildThemedMenu(conText, Guru);
 
-            if (typeof react === "function") {
-                await react("📋");
-            }
+        await sendMenuMsg(Guru, from, text, conText);
 
-            const menuText = await buildThemedMenu(conText, Guru);
-            await sendMenuMsg(Guru, from, menuText, conText);
-
-            if (typeof react === "function") {
-                await react("🚀");
-            }
-        } catch (error) {
-            logError("Menu command failed", error);
-
-            try {
-                await Guru.sendMessage(
-                    from,
-                    {
-                        text:
-                            `╭─⌈ 📋 *${BOT_NAME}* ⌋\n` +
-                            "│ Menu haikufunguka.\n" +
-                            "│ Jaribu tena baada ya muda.\n" +
-                            "╰⊷ Powered by MNYANDWA-MD",
-                    },
-                    mek ? { quoted: mek } : {}
-                );
-            } catch (sendError) {
-                logError("Menu fallback failed", sendError);
-            }
-        }
+        await react("✅");
+    } catch (error) {
+        console.error("MNYANDWA-MD Menu Error:", error);
+        await react("❌");
     }
-);
+});
 
-// ─── CATEGORY NUMBER HANDLER ─────────────────────────────────────────
+// ─── CATEGORY MENU ────────────────────────────
 
-gmd(
-    {
-        pattern: /^\d+$/,
-        on: "body",
-        dontAddCommandList: true,
-        react: "📂",
-        category: "general",
-        description: "Browse a menu category by number",
-    },
-    async (from, Guru, conText) => {
-        const {
-            body, mek, botName, botPrefix, botFooter,
-            newsletterJid, sender, botId
-        } = conText;
+gmd({
+    pattern: /^\d+$/,
+    on: "body",
+    dontAddCommandList: true,
+    category: "general",
+    description: "Browse command categories",
+}, async (from, Guru, conText) => {
+    const {
+        body,
+        mek,
+        botPrefix,
+        sender,
+        botId,
+    } = conText;
 
-        try {
-            const {
-                getSortedCategories,
-                CAT_ICONS,
-                getMenuPicUrl,
-            } = require("./design");
+    const n = parseInt(body.trim(), 10);
+    const cats = getSortedCategories();
 
-            const n = Number(String(body).trim());
-
-            if (!Number.isSafeInteger(n) || n < 1) return;
-
-            const categories = getSortedCategories();
-
-            if (n > categories.length) return;
-
-            const { cat, cmds } = categories[n - 1];
-            const icon = CAT_ICONS?.[cat] || "⚡";
-            const label = String(cat)
-                .replace(/[_-]/g, " ")
-                .toUpperCase();
-
-            const prefix = botPrefix || DEFAULT_PREFIX;
-
-            const cmdList = cmds.map(command => {
-                const pattern = String(command.pattern);
-                const desc = command.description
-                    ? ` — _${command.description}_`
-                    : "";
-
-                const aliases = Array.isArray(command.aliases)
-                    ? command.aliases
-                    : [];
-
-                const altText = aliases.length
-                    ? `\n> │   ↳ _${aliases.map(a => `${prefix}${a}`).join(", ")}_`
-                    : "";
-
-                return `> │ ◈ *${prefix}${pattern}*${desc}${altText}`;
-            }).join("\n");
-
-            const text =
-`> ╭─⌈ ${icon} *${label}* ⌋
-> │ ${cmds.length} command(s) available
-> │
-${cmdList}
-> ╰⊷ ✨ _${botFooter || `Powered by ${BOT_NAME}`}_`;
-
-            const picUrl = await getMenuPicUrl(Guru, botId);
-
-            const options = mek ? { quoted: mek } : {};
-
-            if (picUrl) {
-                await Guru.sendMessage(
-                    from,
-                    { image: { url: picUrl }, caption: text },
-                    options
-                );
-            } else {
-                await Guru.sendMessage(from, { text }, options);
-            }
-        } catch (error) {
-            logError("Category handler failed", error);
-        }
+    if (!Number.isInteger(n) || n < 1 || n > cats.length) {
+        return;
     }
-);
 
-// ─── PING / ALIVE ────────────────────────────────────────────────────
+    const { cat, cmds } = cats[n - 1];
+    const icon = CAT_ICONS[cat] || "⚡";
+    const label = cat.charAt(0).toUpperCase() + cat.slice(1);
+    const prefix = botPrefix || ".";
 
-gmd(
-    {
-        pattern: "ping",
-        aliases: ["alive", "status", "check"],
-        react: "🏓",
-        category: "general",
-        description: "Check bot responsiveness",
-    },
-    async (from, Guru, conText) => {
-        const { mek, react, botName, botPrefix } = conText;
-        const started = performance.now();
+    const cmdList = cmds.map((c) => {
+        const pattern = typeof c.pattern === "string"
+            ? c.pattern
+            : c.pattern instanceof RegExp
+                ? c.pattern.source
+                : "command";
 
-        try {
-            if (typeof react === "function") {
-                await react("🏓");
-            }
+        const desc = c.description ? ` — _${c.description}_` : "";
+        const aliases = (c.aliases || []).length
+            ? `\n> │   ↳ _${c.aliases.map(a => `${prefix}${a}`).join(", ")}_`
+            : "";
 
-            // Measures local handler overhead, not full network latency.
-            const elapsed = (performance.now() - started).toFixed(1);
-            const mem = getMemoryInfo();
+        return `> │ ◈ *${prefix}${pattern}*${desc}${aliases}`;
+    }).join("\n");
 
-            const text =
-`╭─⌈ 🏓 *${botName || BOT_NAME}* ⌋
-│ Status  : ✅ Online
-│ Response: *${elapsed} ms*
-│ Uptime  : *${getUptime()}*
-│ RAM RSS : *${mem.rss} MB*
-│ Prefix  : *${botPrefix || DEFAULT_PREFIX}*
-╰⊷ ⚡ _MNYANDWA-MD SYSTEM_`;
+    const text = [
+        `> ╭─⌈ ${icon} *${label.toUpperCase()}* ⌋`,
+        `> │ _${cmds.length} commands available_`,
+        "> │",
+        cmdList,
+        `> ╰⊷ ✨ _${BOT_FOOTER}_`,
+    ].join("\n");
 
-            await Guru.sendMessage(
-                from,
-                { text },
-                mek ? { quoted: mek } : {}
-            );
-        } catch (error) {
-            logError("Ping command failed", error);
+    try {
+        const picUrl = await getMenuPicUrl(Guru, botId);
+
+        if (picUrl) {
+            await Guru.sendMessage(from, {
+                image: { url: picUrl },
+                caption: text,
+                contextInfo: {
+                    mentionedJid: sender ? [sender] : [],
+                },
+            }, { quoted: mek });
+        } else {
+            await Guru.sendMessage(from, {
+                text,
+                contextInfo: {
+                    mentionedJid: sender ? [sender] : [],
+                },
+            }, { quoted: mek });
         }
+    } catch (error) {
+        console.error("Category Menu Error:", error);
+        await Guru.sendMessage(from, { text }, { quoted: mek });
     }
-);
+});
 
-// ─── UPTIME ──────────────────────────────────────────────────────────
+// ─── PING ─────────────────────────────────────
 
-gmd(
-    {
-        pattern: "uptime",
-        aliases: ["runtime", "ut"],
-        react: "⏱️",
-        category: "general",
-        description: "Show bot uptime and local time",
-    },
-    async (from, Guru, conText) => {
-        const { react, botName, timeZone, mek } = conText;
+gmd({
+    pattern: "ping",
+    aliases: ["p", "speed"],
+    react: "⚡",
+    category: "general",
+    description: "Check bot response speed",
+}, async (from, Guru, conText) => {
+    const { react, mek, botPrefix } = conText;
+    const start = Date.now();
 
-        try {
-            if (typeof react === "function") {
-                await react("⏱️");
-            }
+    try {
+        const speed = Date.now() - start;
 
-            const tz = timeZone || process.env.TIME_ZONE ||
-                DEFAULT_TIMEZONE;
+        await sendButtons(Guru, from, {
+            title: `⚡ ${BOT_NAME}`,
+            text: `Pong! 🏓\n\nResponse: ${speed} ms\nStatus: Online 🟢`,
+            footer: BOT_FOOTER,
+            buttons: [
+                {
+                    id: `${botPrefix || "."}uptime`,
+                    text: "⏱️ Uptime",
+                },
+                {
+                    id: `${botPrefix || "."}botinfo`,
+                    text: "🤖 Bot Info",
+                },
+            ],
+        });
 
-            const now = moment().tz(tz);
-            const mem = getMemoryInfo();
-
-            if (!now.isValid()) {
-                throw new Error("Invalid timezone configuration");
-            }
-
-            const text =
-`╭─⌈ ⏱️ *${botName || BOT_NAME}* ⌋
-│ Uptime  : *${getUptime()}*
-│ Time    : ${now.format("hh:mm:ss A")}
-│ Date    : ${now.format("ddd, DD MMM YYYY")}
-│ Heap    : *${mem.heapUsed}/${mem.heapTotal} MB*
-│ RSS     : *${mem.rss} MB*
-╰⊷ _SYSTEM OPERATIONAL_`;
-
-            await Guru.sendMessage(
-                from,
-                { text },
-                mek ? { quoted: mek } : {}
-            );
-        } catch (error) {
-            logError("Uptime command failed", error);
-        }
+        await react("✅");
+    } catch (error) {
+        console.error("Ping Error:", error);
+        await Guru.sendMessage(from, {
+            text: `⚡ ${BOT_NAME}\nResponse: ${Date.now() - start} ms`,
+        }, { quoted: mek });
     }
-);
+});
 
-// ─── PERFORMANCE / SYSTEM INFO ──────────────────────────────────────
+// ─── UPTIME ───────────────────────────────────
 
-gmd(
-    {
-        pattern: "system",
-        aliases: ["performance", "sysinfo"],
-        react: "🖥️",
-        category: "general",
-        description: "Show Node.js and system performance",
-    },
-    async (from, Guru, conText) => {
-        const { react, mek, botName } = conText;
+gmd({
+    pattern: "uptime",
+    aliases: ["runtime", "ut"],
+    react: "⏱️",
+    category: "general",
+    description: "Check bot uptime",
+}, async (from, Guru, conText) => {
+    const { reply, react } = conText;
 
-        try {
-            if (typeof react === "function") {
-                await react("🖥️");
-            }
+    try {
+        await reply(
+            `╭━━〔 ⏱️ ${BOT_NAME} 〕━━╮\n` +
+            `┃ Online: ${getUptime()}\n` +
+            `┃ Status: 🟢 Running\n` +
+            `╰━━━━━━━━━━━━━━━━━━╯`
+        );
 
-            const mem = getMemoryInfo();
-            const cpus = os.cpus();
-            const load = os.loadavg();
-
-            const text =
-`╭─⌈ 🖥️ *${botName || BOT_NAME} SYSTEM* ⌋
-│ Platform : ${process.platform}
-│ Node.js  : ${process.version}
-│ CPU cores: ${cpus.length}
-│ Load avg : ${load.map(n => n.toFixed(2)).join(" / ")}
-│ RSS      : ${mem.rss} MB
-│ Heap     : ${mem.heapUsed}/${mem.heapTotal} MB
-│ System RAM: ${mem.systemUsed}/${mem.systemTotal} MB
-│ Uptime   : ${getUptime()}
-╰⊷ _MNYANDWA-MD MONITOR_`;
-
-            await Guru.sendMessage(
-                from,
-                { text },
-                mek ? { quoted: mek } : {}
-            );
-        } catch (error) {
-            logError("System command failed", error);
-        }
+        await react("✅");
+    } catch (error) {
+        console.error("Uptime Error:", error);
+        await react("❌");
     }
-);
+});
 
-// ─── BOT INFO ────────────────────────────────────────────────────────
+// ─── BOT INFO ─────────────────────────────────
 
-gmd(
-    {
-        pattern: "botinfo",
-        aliases: ["info", "about", "mybot"],
-        react: "🤖",
-        category: "general",
-        description: "Show bot information",
-    },
-    async (from, Guru, conText) => {
-        const {
-            reply, react, botName, botPrefix, botVersion,
-            botMode, ownerName
-        } = conText;
+gmd({
+    pattern: "botinfo",
+    aliases: ["info", "about", "mybot"],
+    react: "🤖",
+    category: "general",
+    description: "Show bot information",
+}, async (from, Guru, conText) => {
+    const { reply, botPrefix, botMode } = conText;
 
-        try {
-            if (typeof react === "function") {
-                await react("🤖");
-            }
+    const totalCmds = commands.filter(c =>
+        c.pattern && !c.dontAddCommandList
+    ).length;
 
-            const { commands } = require("../luka");
+    await reply(
+        `╭━━〔 🤖 ${BOT_NAME} 〕━━╮\n` +
+        `┃ 📦 Version: ${BOT_VERSION}\n` +
+        `┃ 📌 Prefix: ${botPrefix || "."}\n` +
+        `┃ 🌐 Mode: ${(botMode || "public").toUpperCase()}\n` +
+        `┃ 📚 Commands: ${totalCmds}\n` +
+        `┃ ⏱️ Uptime: ${getUptime()}\n` +
+        `┃ 👑 Owner: ${BOT_OWNER}\n` +
+        `┃ 📖 Library: Baileys\n` +
+        `╰━━━━━━━━━━━━━━━━━━╯`
+    );
+});
 
-            const totalCmds = Array.isArray(commands)
-                ? commands.filter(c =>
-                    c.pattern && !c.dontAddCommandList
-                ).length
-                : "N/A";
+// ─── OWNER ────────────────────────────────────
 
-            const text =
-`╭─⌈ 🤖 *${botName || BOT_NAME}* ⌋
-│ Version  : *v${botVersion || "5.0.0"}*
-│ Prefix   : *${botPrefix || DEFAULT_PREFIX}*
-│ Mode     : *${String(botMode || "public").toUpperCase()}*
-│ Commands : *${totalCmds}*
-│ Uptime   : *${getUptime()}*
-│ Owner    : *${ownerName || "MNYANDWA"}*
-│ Library  : Baileys
-╰⊷ *${botName || BOT_NAME}*`;
+gmd({
+    pattern: "owner",
+    aliases: ["creator", "dev"],
+    react: "👑",
+    category: "general",
+    description: "Show bot owner information",
+}, async (from, Guru, conText) => {
+    const { reply } = conText;
 
-            if (typeof reply === "function") {
-                await reply(text);
-            } else {
-                await conText.Guru?.sendMessage?.(conText.from, { text });
-            }
-        } catch (error) {
-            logError("Botinfo command failed", error);
-        }
-    }
-);
+    await reply(
+        `╭━━〔 👑 BOT OWNER 〕━━╮\n` +
+        `┃ Bot: ${BOT_NAME}\n` +
+        `┃ Owner: ${BOT_OWNER}\n` +
+        `┃ Developer: MNYANDWA\n` +
+        `╰━━━━━━━━━━━━━━━━━━╯`
+    );
+});
+
+// ─── DATE & TIME ──────────────────────────────
+
+gmd({
+    pattern: "date",
+    aliases: ["time", "today"],
+    react: "📅",
+    category: "general",
+    description: "Show current date and time",
+}, async (from, Guru, conText) => {
+    const { reply } = conText;
+
+    const now = new Date();
+
+    const date = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Africa/Dar_es_Salaam",
+        dateStyle: "full",
+    }).format(now);
+
+    const time = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Africa/Dar_es_Salaam",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+    }).format(now);
+
+    await reply(
+        `╭━━〔 📅 ${BOT_NAME} 〕━━╮\n` +
+        `┃ Date: ${date}\n` +
+        `┃ Time: ${time} EAT\n` +
+        `╰━━━━━━━━━━━━━━━━━━╯`
+    );
+});
+
+// ─── SYSTEM INFO ──────────────────────────────
+
+gmd({
+    pattern: "system",
+    aliases: ["server", "host"],
+    react: "🛠️",
+    category: "general",
+    description: "Show server system information",
+}, async (from, Guru, conText) => {
+    const { reply } = conText;
+    const s = getSystemInfo();
+
+    await reply(
+        `╭━━〔 🛠️ SYSTEM INFO 〕━━╮\n` +
+        `┃ Platform: ${s.platform}\n` +
+        `┃ Architecture: ${s.architecture}\n` +
+        `┃ CPU Cores: ${s.cpus}\n` +
+        `┃ Total RAM: ${s.totalRam} GB\n` +
+        `┃ Used RAM: ${s.usedRam} GB\n` +
+        `┃ Free RAM: ${s.freeRam} GB\n` +
+        `╰━━━━━━━━━━━━━━━━━━╯`
+    );
+});
+
+// ─── RAM ──────────────────────────────────────
+
+gmd({
+    pattern: "ram",
+    aliases: ["memory"],
+    react: "💾",
+    category: "general",
+    description: "Check server RAM usage",
+}, async (from, Guru, conText) => {
+    const { reply } = conText;
+    const s = getSystemInfo();
+
+    await reply(
+        `💾 *${BOT_NAME} RAM STATUS*\n\n` +
+        `Total: ${s.totalRam} GB\n` +
+        `Used: ${s.usedRam} GB\n` +
+        `Free: ${s.freeRam} GB`
+    );
+});
+
+// ─── HELP ─────────────────────────────────────
+
+gmd({
+    pattern: "aboutbot",
+    aliases: ["bothelp"],
+    react: "ℹ️",
+    category: "general",
+    description: "About MNYANDWA-MD",
+}, async (from, Guru, conText) => {
+    const { reply } = conText;
+
+    await reply(
+        `🔥 Welcome to ${BOT_NAME}!\n\n` +
+        `A WhatsApp assistant powered by Baileys.\n\n` +
+        `Commands:\n` +
+        `• .menu\n` +
+        `• .ping\n` +
+        `• .uptime\n` +
+        `• .botinfo\n` +
+        `• .owner\n` +
+        `• .date\n` +
+        `• .system\n` +
+        `• .ram\n\n` +
+        `${BOT_FOOTER}`
+    );
+});
 
 module.exports = {};
