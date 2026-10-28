@@ -1,314 +1,1121 @@
-JavaScript
+/**
+ * design.js — Bot Design & Menu Theme System
+ * Commands: .setmenu, .previewmenu, .setbotpic, .setmenupic,
+ *           .setfooter, .setcaption, .setbotname, .designinfo, .resetdesign
+ */
 
 "use strict";
 
-const { gmd, commands } = require("../kevo");
-const {
-    getSetting,
-    setSetting
-} = require("../kevo/database/settings");
-
+const { gmd, commands }                          = require("../kevo");
+const { getSetting, setSetting, resetSetting }   = require("../kevo/database/settings");
+const { getExpiryStatus }                        = require("../kevo/expiry");
+const { S_WHATSAPP_NET }                         = require("@whiskeysockets/baileys");
+const fs   = require("fs").promises;
+const path = require("path");
 const moment = require("moment-timezone");
 
-const MENU_IMAGE_URL = "https://i.imgur.com/S0vFsHt.jpeg";
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
-const CAT_ORDER = [
-    "general", "ai", "downloader", "tools", "search",
-    "games", "group", "owner", "settings", "fun",
-    "converter", "religion", "texttools", "notes",
-    "channels", "sports", "extras", "restrictions",
-    "sticker", "media", "ultracore"
-];
-
-const CAT_ICONS = {
-    general: "◈",
-    ai: "✦",
-    downloader: "⇩",
-    tools: "⚙",
-    search: "⌕",
-    games: "♟",
-    group: "♧",
-    owner: "♛",
-    settings: "⚙",
-    fun: "☻",
-    converter: "⇄",
-    religion: "☪",
-    texttools: "Aa",
-    notes: "▤",
-    channels: "◉",
-    sports: "⚽",
-    extras: "✧",
-    restrictions: "⛨",
-    sticker: "✿",
-    media: "▶",
-    ultracore: "⚡"
-};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function formatUptime(seconds) {
-    const d = Math.floor(seconds / 86400);
-    const h = Math.floor((seconds % 86400) / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    return `${d}d ${h}h ${m}m ${s}s`;
+    const d = Math.floor(seconds / 86400); seconds %= 86400;
+    const h = Math.floor(seconds / 3600);  seconds %= 3600;
+    const m = Math.floor(seconds / 60);    seconds %= 60;
+    return `${d}d ${h}h ${m}m ${seconds}s`;
 }
 
-function cleanNumber(sender) {
-    return String(sender || "")
-        .split("@")[0]
-        .split(":")[0]
-        .replace(/\D/g, "");
+function memProgress(filled, total, width = 10) {
+    const f   = Math.max(0, Math.min(width, Math.round((filled / total) * width)));
+    const bar = '▰'.repeat(f) + '▱'.repeat(width - f);
+    return `${bar} ${Math.round((filled / total) * 100)}%`;
 }
 
+function fmtMB(bytes) { return (bytes / 1024 / 1024).toFixed(1) + ' MB'; }
+
+function now(fmt, tz) {
+    return moment().tz(tz || 'Africa/Nairobi').format(fmt);
+}
+
+const CAT_ICONS = {
+    general: "💬", owner: "🔐", group: "👥", ai: "🧠",
+    downloader: "⬇️", tools: "⚒️", search: "🔎", games: "🕹️",
+    fun: "🎭", religion: "🤲", sticker: "🪄", converter: "🔀",
+    settings: "🛠️", media: "🎬", notes: "🗒️", channels: "📡",
+    sports: "🏆", extras: "💎", texttools: "✍️", restrictions: "🛡️",
+    ultracore: "🔥",
+};
+
+const CAT_ORDER = [
+    "general","ai","downloader","tools","search","games","group","owner",
+    "settings","fun","converter","religion","texttools","notes","channels",
+    "sports","extras","restrictions","sticker","media","ultracore",
+];
+
+const GREETINGS = ['Habari', 'Sawubona', 'Sanibona', 'Dumela', 'Hello', 'Salut', 'Hola', 'Mambo'];
+
+function timeGreeting(h) {
+    if (h < 12) return '🌅 Good Morning';
+    if (h < 17) return '☀️ Good Afternoon';
+    if (h < 21) return '🌆 Good Evening';
+    return '🌙 Good Night';
+}
+
+/**
+ * getSortedCategories — single source of truth for category ordering.
+ */
 function getSortedCategories() {
-    const map = {};
-
+    const catMap = {};
     for (const cmd of commands) {
         if (!cmd.pattern || cmd.dontAddCommandList) continue;
-        if (typeof cmd.pattern !== "string") continue;
-
-        const cat = String(cmd.category || "general").toLowerCase();
-        if (!map[cat]) map[cat] = [];
-        map[cat].push(cmd);
+        if (typeof cmd.pattern !== 'string') continue;
+        const cat = (cmd.category || "general").toLowerCase();
+        if (!catMap[cat]) catMap[cat] = [];
+        catMap[cat].push(cmd);
     }
-
-    return Object.keys(map)
-        .sort((a, b) => {
-            const ai = CAT_ORDER.indexOf(a);
-            const bi = CAT_ORDER.indexOf(b);
-
-            if (ai === -1 && bi === -1) return a.localeCompare(b);
-            if (ai === -1) return 1;
-            if (bi === -1) return -1;
-            return ai - bi;
-        })
-        .map(cat => ({ cat, cmds: map[cat] }));
+    return Object.keys(catMap).sort((a, b) => {
+        const ai = CAT_ORDER.indexOf(a), bi = CAT_ORDER.indexOf(b);
+        if (ai === -1 && bi === -1) return a.localeCompare(b);
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+    }).map(cat => ({ cat, cmds: catMap[cat] }));
 }
 
-async function buildMenuData(conText = {}) {
-    const categories = getSortedCategories();
-    const memory = process.memoryUsage();
-    const timezone = process.env.TIME_ZONE || "Africa/Dar_es_Salaam";
-    const hour = Number(moment().tz(timezone).format("HH"));
+// ─── menu data builder ────────────────────────────────────────────────────────
 
-    let greeting = "GOOD NIGHT";
-    if (hour < 12) greeting = "GOOD MORNING";
-    else if (hour < 17) greeting = "GOOD AFTERNOON";
-    else if (hour < 21) greeting = "GOOD EVENING";
+async function buildMenuData(conText) {
+    const {
+        sender, pushName, botName, botPrefix, botVersion,
+        botMode, botFooter, botCaption, newsletterJid,
+    } = conText;
 
-    let expiryLine = "Lifetime";
+    const uptime     = formatUptime(Math.floor(process.uptime()));
+    const totalCmds  = commands.filter(c => c.pattern && !c.dontAddCommandList).length;
+    const mem        = process.memoryUsage();
+    const memBar     = memProgress(mem.heapUsed, mem.heapTotal, 10);
+    const memDetail  = `${fmtMB(mem.heapUsed)} / ${fmtMB(mem.heapTotal)}`;
+    const tz         = process.env.TIME_ZONE || 'Africa/Nairobi';
+    const hour       = parseInt(now('HH', tz), 10);
+    const dateStr    = now('DD MMM YYYY', tz);
+    const timeStr    = now('hh:mm A', tz);
+    const timeStr24  = now('hh:mm:ss A', tz);
+    const greeting   = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+    const tGreet     = timeGreeting(hour);
 
-    try {
-        const expiryModule = require("../kevo/expiry");
-        if (typeof expiryModule.getExpiryStatus === "function") {
-            const status = await expiryModule.getExpiryStatus();
-            expiryLine = status?.line || "Lifetime";
-        }
-    } catch {
-        expiryLine = "Lifetime";
-    }
+    // Expiry — reads from env var + DB fallback
+    const expiryStatus = await getExpiryStatus();
+    const expiryLine   = expiryStatus.line;
+    const expiryDetail = expiryStatus.daysLeft !== null
+        ? (expiryStatus.daysLeft <= 0 ? 'EXPIRED' : `${expiryStatus.daysLeft}d remaining`)
+        : 'Lifetime · Always active';
 
-    const categoryLines = categories.map(({ cat }, index) => {
-        const icon = CAT_ICONS[cat] || "◇";
-        return `│ ${String(index + 1).padStart(2, "0")} ${icon} ${cat.toUpperCase()}`;
+    const sortedCats = getSortedCategories();
+
+    // Quoted blockquote style: > 01  LABEL
+    const catLines = sortedCats.map(({ cat, cmds }, i) => {
+        const label = (cat[0].toUpperCase() + cat.slice(1)).toUpperCase();
+        const num   = String(i + 1).padStart(2, '0');
+        return `> ${num}  ${label}`;
     }).join("\n");
 
     return {
-        pushName: conText.pushName || "User",
-        sender: conText.sender || "",
-        userNumber: cleanNumber(conText.sender) || "User",
-        botName: conText.botName || "MNYANDWA-MD",
-        botPrefix: conText.botPrefix || ".",
-        botVersion: conText.botVersion || "5.0.0",
-        botMode: conText.botMode || "public",
-        botFooter: conText.botFooter || "POWERED BY MNYANDWA",
-        totalCmds: commands.filter(c => c.pattern && !c.dontAddCommandList).length,
-        uptime: formatUptime(process.uptime()),
-        memDetail: `${(memory.heapUsed / 1048576).toFixed(1)} / ${(memory.heapTotal / 1048576).toFixed(1)} MB`,
-        greeting,
-        expiryLine,
-        categoryLines,
-        numCats: categories.length
+        sender,
+        pushName:   pushName   || "User",
+        botName:    botName    || "LUKA-XMD",
+        botPrefix:  botPrefix  || ".",
+        botVersion: botVersion || "5.0.0",
+        botMode:    botMode    || "public",
+        botFooter:  botFooter  || "ᴘᴏᴡᴇʀᴇᴅ ʙʏ ʟᴜᴋᴀʙʀᴀɴᴅ",
+        botCaption: botCaption || "",
+        newsletterJid,
+        uptime, totalCmds, catLines,
+        expiryLine, expiryDetail,
+        memBar, memDetail,
+        dateStr, timeStr, timeStr24,
+        greeting, timeGreet: tGreet,
+        numCats: sortedCats.length,
     };
 }
 
+// ─── THEMES ───────────────────────────────────────────────────────────────────
+
 const THEMES = {
-    premium: {
-        name: "◆ PREMIUM",
-        description: "Modern premium dashboard",
-        render(data) {
-            return `╭━━〔 ✦ ${data.botName.toUpperCase()} ✦ 〕━━╮
-┃ ◉ STATUS   : ONLINE
-┃ ◈ USER     : ${data.pushName}
-┃ ◇ COMMANDS : ${data.totalCmds}
-┃ ⌁ PREFIX   : ${data.botPrefix}
-┃ ◎ MODE     : ${data.botMode.toUpperCase()}
-┃ ◷ UPTIME   : ${data.uptime}
-┃ ◇ VERSION  : ${data.botVersion}
-┃ 🔒 LICENCE : ${data.expiryLine}
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯
 
-╭━━〔 ◈ COMMAND CENTER 〕━━╮
-${data.categoryLines}
-╰━━━━━━━━━━━━━━━━━━━━━━━━━━╯
+    ultra: {
+        name: "🔷 ULTRA",
+        description: "Classic rounded frame",
+        render({
+            botName, botPrefix, botVersion, botMode, botFooter,
+            uptime, totalCmds, catLines, expiryLine, numCats,
+            pushName, memBar, dateStr, timeStr, timeGreet
+        }) {
 
-${data.greeting}, ${data.pushName}!
-Reply with a category number: 1-${data.numCats}
+            const cats = catLines
+                .split("\n")
+                .map(l => `┃ ${l.replace(/^> ?/, "")}`)
+                .join("\n");
 
-${data.botFooter}`;
-        }
+            return (
+`╭══〘〘 *${botName.toUpperCase()}* 〙〙═⊷
+┃
+┃ 👋 ${timeGreet}, *${pushName}*
+┃ 📅 ${dateStr}  •  🕐 ${timeStr}
+┃
+┃ 🟢 Status   : *ONLINE*
+┃ 📦 Plugins  : *${totalCmds}*
+┃ ⚡ Prefix   : *${botPrefix}*
+┃ 🌐 Mode     : *${botMode.toUpperCase()}*
+┃ 📱 Version  : *v${botVersion}*
+┃ ⏱ Uptime   : *${uptime}*
+┃ 💾 RAM      : ${memBar}
+┃ 🔒 Licence  : ${expiryLine}
+┃
+┃ ╭─「 📋 CATEGORIES 」
+${cats}
+┃ ╰───────────────
+┃
+╰═════════════════⊷
+     _${botFooter}_`
+            );
+        },
     },
 
-    cyber: {
-        name: "⌁ CYBER",
-        description: "Futuristic terminal",
-        render(data) {
-            return `> SYSTEM :: ${data.botName.toUpperCase()}
-> STATUS  :: ONLINE
-> USER    :: ${data.pushName}
-> COMMANDS:: ${data.totalCmds}
-> PREFIX  :: ${data.botPrefix}
-> MODE    :: ${data.botMode.toUpperCase()}
-> UPTIME  :: ${data.uptime}
-> RAM     :: ${data.memDetail}
-> LICENCE :: ${data.expiryLine}
 
-> MODULES
-${data.categoryLines}
+    panther: {
+        name: "🐾 PANTHER",
+        description: "Bold panther rounded frame",
+        render({
+            botName, botPrefix, botVersion, botMode, botFooter,
+            uptime, totalCmds, catLines, expiryLine, numCats,
+            pushName, memBar, dateStr, timeStr24, timeGreet
+        }) {
 
-> SELECT MODULE: 1-${data.numCats}
+            const cats = catLines
+                .split("\n")
+                .map(l => `┃ 🐾 ${l.replace(/^> ?/, "")}`)
+                .join("\n");
 
-${data.botFooter}`;
-        }
+            return (
+`╭══〘〘 🐾 *${botName.toUpperCase()}* 〙〙═⊷
+┃
+┃ 🌍 *WAKANDA MODE*
+┃ 👋 ${timeGreet}, *${pushName}*
+┃ 📅 ${dateStr}
+┃ 🕐 ${timeStr24}
+┃
+┃ 🟢 Status   : *ONLINE*
+┃ 🎮 Commands : *${totalCmds}*
+┃ ⚡ Prefix   : *${botPrefix}*
+┃ 🛡️ Mode     : *${botMode.toUpperCase()}*
+┃ 📦 Version  : *v${botVersion}*
+┃ ⏱ Uptime   : *${uptime}*
+┃ 💾 RAM      : ${memBar}
+┃ 🔒 Licence  : ${expiryLine}
+┃
+┃ ╭─「 🐾 COMMANDS 」
+${cats}
+┃ ╰───────────────
+┃
+╰═════════════════⊷
+     _🐾 ${botFooter}_`
+            );
+        },
     },
+
+
+    neon: {
+        name: "⚡ NEON",
+        description: "Cyber rounded frame",
+        render({
+            botName, botPrefix, botVersion, botMode, botFooter,
+            uptime, totalCmds, catLines, expiryLine,
+            memBar, pushName, numCats
+        }) {
+
+            const cats = catLines
+                .split("\n")
+                .map(l => `┃ ⚡ ${l.replace(/^> ?/, "")}`)
+                .join("\n");
+
+            return (
+`╭══〘〘 ⚡ *${botName.toUpperCase()}* 〙〙═⊷
+┃
+┃ 🤖 Hello *${pushName}*
+┃
+┃ ⚡ SYSTEM STATUS
+┃ 🟢 Online
+┃ 📊 Commands : *${totalCmds}*
+┃ 🔑 Prefix   : *${botPrefix}*
+┃ 🛠️ Mode     : *${botMode.toUpperCase()}*
+┃ 📦 Version  : *v${botVersion}*
+┃ ⏱️ Uptime   : *${uptime}*
+┃ 💾 RAM      : ${memBar}
+┃ 🔒 Licence  : ${expiryLine}
+┃
+┃ ╭─「 ⚡ CATEGORIES 」
+${cats}
+┃ ╰───────────────
+┃
+╰═════════════════⊷
+     _⚡ ${botFooter}_`
+            );
+        },
+    },
+
+
+    minimal: {
+        name: "🪶 MINIMAL",
+        description: "Simple rounded frame",
+        render({
+            botName, botPrefix, botVersion, botMode, botFooter,
+            uptime, totalCmds, catLines, expiryLine,
+            pushName, numCats
+        }) {
+
+            const cats = catLines
+                .split("\n")
+                .map(l => `┃ ${l.replace(/^> ?/, "")}`)
+                .join("\n");
+
+            return (
+`╭══〘〘 *${botName.toUpperCase()}* 〙〙═⊷
+┃
+┃ 👋 Hi *${pushName}*
+┃
+┃ 🟢 ONLINE
+┃ 💬 Commands : *${totalCmds}*
+┃ ⏱ Uptime   : *${uptime}*
+┃ 🔑 Prefix   : *${botPrefix}*
+┃ 🛠️ Mode     : *${botMode.toUpperCase()}*
+┃ 📦 Version  : *v${botVersion}*
+┃ 🔒 Licence  : ${expiryLine}
+┃
+┃ ╭─「 📋 MENU 」
+${cats}
+┃ ╰───────────────
+┃
+╰═════════════════⊷
+     _${botFooter}_`
+            );
+        },
+    },
+
+
+    royal: {
+        name: "👑 ROYAL",
+        description: "Royal rounded frame",
+        render({
+            botName, botPrefix, botVersion, botMode, botFooter,
+            uptime, totalCmds, catLines, expiryLine,
+            expiryDetail, pushName, numCats
+        }) {
+
+            const cats = catLines
+                .split("\n")
+                .map(l => `┃ 👑 ${l.replace(/^> ?/, "")}`)
+                .join("\n");
+
+            return (
+`╭══〘〘 👑 *${botName.toUpperCase()}* 〙〙═⊷
+┃
+┃ 💎 Welcome, *${pushName}*
+┃
+┃ 👑 ROYAL SYSTEM
+┃ 🟢 Status   : *ONLINE*
+┃ 💬 Commands : *${totalCmds}*
+┃ ⚡ Prefix   : *${botPrefix}*
+┃ 🛠️ Mode     : *${botMode.toUpperCase()}*
+┃ 📦 Version  : *v${botVersion}*
+┃ ⏱ Uptime   : *${uptime}*
+┃ 🔒 Licence  : ${expiryLine}
+┃ 📅 Expiry   : _${expiryDetail}_
+┃
+┃ ╭─「 👑 CATEGORIES 」
+${cats}
+┃ ╰───────────────
+┃
+╰═════════════════⊷
+     _👑 ${botFooter}_`
+            );
+        },
+    },
+
+
+    galaxy: {
+        name: "🌌 GALAXY",
+        description: "Galaxy rounded frame",
+        render({
+            botName, botPrefix, botVersion, botMode, botFooter,
+            uptime, totalCmds, catLines, expiryLine,
+            pushName, memBar, numCats
+        }) {
+
+            const cats = catLines
+                .split("\n")
+                .map(l => `┃ 🌌 ${l.replace(/^> ?/, "")}`)
+                .join("\n");
+
+            return (
+`╭══〘〘 🌌 *${botName.toUpperCase()}* 〙〙═⊷
+┃
+┃ 🚀 Greetings, *${pushName}*
+┃ ✨ Welcome to the galaxy
+┃
+┃ 🪐 SYSTEM
+┃ 🟢 Status   : *ONLINE*
+┃ 🛰️ Commands : *${totalCmds}*
+┃ 🔭 Prefix   : *${botPrefix}*
+┃ 🛸 Mode     : *${botMode.toUpperCase()}*
+┃ 🌍 Version  : *v${botVersion}*
+┃ ⏳ Uptime   : *${uptime}*
+┃ 💾 RAM      : ${memBar}
+┃ 🔒 Licence  : ${expiryLine}
+┃
+┃ ╭─「 🌌 CATEGORIES 」
+${cats}
+┃ ╰───────────────
+┃
+╰═════════════════⊷
+     _🌙 ${botFooter}_`
+            );
+        },
+    },
+
+
+    dark: {
+        name: "🖤 DARK",
+        description: "Dark rounded frame",
+        render({
+            botName, botPrefix, botVersion, botMode, botFooter,
+            uptime, totalCmds, catLines, expiryLine,
+            pushName, memBar, numCats
+        }) {
+
+            const cats = catLines
+                .split("\n")
+                .map(l => `┃ ☠️ ${l.replace(/^> ?/, "")}`)
+                .join("\n");
+
+            return (
+`╭══〘〘 🖤 *${botName.toUpperCase()}* 〙〙═⊷
+┃
+┃ ☠️ *${pushName}* entered the shadows
+┃
+┃ 🕷️ DARK SYSTEM
+┃ 🟢 Status   : *ONLINE*
+┃ 💬 Commands : *${totalCmds}*
+┃ 🔑 Prefix   : *${botPrefix}*
+┃ 🛠️ Mode     : *${botMode.toUpperCase()}*
+┃ 📦 Version  : *v${botVersion}*
+┃ ⏱ Uptime   : *${uptime}*
+┃ 💾 RAM      : ${memBar}
+┃ 🔒 Licence  : ${expiryLine}
+┃
+┃ ╭─「 🕷️ CATEGORIES 」
+${cats}
+┃ ╰───────────────
+┃
+╰═════════════════⊷
+     _🖤 ${botFooter}_`
+            );
+        },
+    },
+
+
+    flower: {
+        name: "🌸 FLOWER",
+        description: "Cute floral rounded frame",
+        render({
+            botName, botPrefix, botVersion, botMode, botFooter,
+            uptime, totalCmds, catLines, expiryLine,
+            pushName, numCats
+        }) {
+
+            const cats = catLines
+                .split("\n")
+                .map(l => `┃ 🌸 ${l.replace(/^> ?/, "")}`)
+                .join("\n");
+
+            return (
+`╭══〘〘 🌸 *${botName.toUpperCase()}* 〙〙═⊷
+┃
+┃ 🌷 Hi *${pushName}* ✨
+┃ 🌺 Welcome back
+┃
+┃ 🟢 Status   : *ONLINE*
+┃ 🌻 Commands : *${totalCmds}*
+┃ 🔑 Prefix   : *${botPrefix}*
+┃ 🌐 Mode     : *${botMode.toUpperCase()}*
+┃ 📦 Version  : *v${botVersion}*
+┃ ⏱ Uptime   : *${uptime}*
+┃ 🔒 Licence  : ${expiryLine}
+┃
+┃ ╭─「 🌸 CATEGORIES 」
+${cats}
+┃ ╰───────────────
+┃
+╰═════════════════⊷
+     _🌸 ${botFooter}_`
+            );
+        },
+    },
+
+
+    fire: {
+        name: "🔥 FIRE",
+        description: "Fire rounded frame",
+        render({
+            botName, botPrefix, botVersion, botMode, botFooter,
+            uptime, totalCmds, catLines, expiryLine,
+            pushName, numCats
+        }) {
+
+            const cats = catLines
+                .split("\n")
+                .map(l => `┃ 🔥 ${l.replace(/^> ?/, "")}`)
+                .join("\n");
+
+            return (
+`╭══〘〘 🔥 *${botName.toUpperCase()}* 〙〙═⊷
+┃
+┃ 💥 *${pushName}*, you're on fire!
+┃
+┃ 🔥 FIRE SYSTEM
+┃ 🟢 Status   : *ONLINE*
+┃ 💬 Commands : *${totalCmds}*
+┃ 🔑 Prefix   : *${botPrefix}*
+┃ 🛠️ Mode     : *${botMode.toUpperCase()}*
+┃ 📦 Version  : *v${botVersion}*
+┃ ⏱ Uptime   : *${uptime}*
+┃ 🔒 Licence  : ${expiryLine}
+┃
+┃ ╭─「 🔥 CATEGORIES 」
+${cats}
+┃ ╰───────────────
+┃
+╰═════════════════⊷
+     _🔥 ${botFooter}_`
+            );
+        },
+    },
+
+
+    wave: {
+        name: "🌊 WAVE",
+        description: "Ocean rounded frame",
+        render({
+            botName, botPrefix, botVersion, botMode, botFooter,
+            uptime, totalCmds, catLines, expiryLine,
+            pushName, numCats
+        }) {
+
+            const cats = catLines
+                .split("\n")
+                .map(l => `┃ 🌊 ${l.replace(/^> ?/, "")}`)
+                .join("\n");
+
+            return (
+`╭══〘〘 🌊 *${botName.toUpperCase()}* 〙〙═⊷
+┃
+┃ 🐚 Riding the wave, *${pushName}*
+┃
+┃ 🌊 OCEAN SYSTEM
+┃ 🟢 Status   : *ONLINE*
+┃ 🐠 Commands : *${totalCmds}*
+┃ 🔑 Prefix   : *${botPrefix}*
+┃ 🛠️ Mode     : *${botMode.toUpperCase()}*
+┃ 📦 Version  : *v${botVersion}*
+┃ ⏱ Uptime   : *${uptime}*
+┃ 🔒 Licence  : ${expiryLine}
+┃
+┃ ╭─「 🌊 CATEGORIES 」
+${cats}
+┃ ╰───────────────
+┃
+╰═════════════════⊷
+     _🌊 ${botFooter}_`
+            );
+        },
+    },
+
 
     matrix: {
-        name: "▣ MATRIX",
-        description: "Matrix terminal layout",
-        render(data) {
-            return `╔══════════════════════════════╗
-║ ${data.botName.toUpperCase()}
-╠══════════════════════════════╣
-║ SYSTEM ONLINE
-║ USER     : ${data.pushName}
-║ COMMANDS : ${data.totalCmds}
-║ PREFIX   : ${data.botPrefix}
-║ VERSION  : ${data.botVersion}
-║ UPTIME   : ${data.uptime}
-╠══════════════════════════════╣
-${data.categoryLines}
-╠══════════════════════════════╣
-║ REPLY 1-${data.numCats}
-╚══════════════════════════════╝
+        name: "💻 MATRIX",
+        description: "Hacker rounded frame",
+        render({
+            botName, botPrefix, botVersion, botMode, botFooter,
+            uptime, totalCmds, catLines, expiryLine,
+            sender, memBar, numCats
+        }) {
 
-${data.botFooter}`;
-        }
-    }
+            const cats = catLines
+                .split("\n")
+                .map(l => `┃ 💻 ${l.replace(/^> ?/, "")}`)
+                .join("\n");
+
+            return (
+`╭══〘〘 💻 *${botName.toUpperCase()}* 〙〙═⊷
+┃
+┃ ⌨️ INIT_USER  :: ${sender.split("@")[0]}
+┃ ✅ SYS_BOOT   :: COMPLETE
+┃
+┃ 💻 MATRIX SYSTEM
+┃ 🟢 STATUS    :: *ONLINE*
+┃ 💬 CMDS      :: *${totalCmds}*
+┃ 🔑 PREFIX    :: *${botPrefix}*
+┃ 🛠️ MODE      :: *${botMode.toUpperCase()}*
+┃ 📦 VERSION   :: *v${botVersion}*
+┃ ⏱ UPTIME     :: *${uptime}*
+┃ 💾 RAM       :: ${memBar}
+┃ 🔒 LICENCE   :: ${expiryLine}
+┃
+┃ ╭─「 💻 MODULES 」
+${cats}
+┃ ╰───────────────
+┃
+╰═════════════════⊷
+     _💻 ${botFooter}_`
+            );
+        },
+    },
+
 };
 
 const THEME_KEYS = Object.keys(THEMES);
 
-async function buildThemedMenu(conText) {
-    let key = "premium";
+// ─── shared send helper ───────────────────────────────────────────────────────
 
-    try {
-        key = (await getSetting("MENU_THEME")) || "premium";
-    } catch (error) {
-        console.error("[MNYANDWA-MD] Menu setting error:", error.message);
+// Resolves the image to use in menu/category cards: an owner-set custom pic
+// (via .setmenupic) takes priority, otherwise fall back to the bot's own
+// live WhatsApp profile picture — always valid, no dead hardcoded URLs.
+async function getMenuPicUrl(Guru, botId) {
+    const customPic = await getSetting("MENU_PIC_CUSTOM");
+    if (customPic) return customPic;
+
+    // Try a few JID forms — some WhatsApp accounts expose the bot's own id
+    // in the newer @lid format, which profilePictureUrl often can't resolve
+    // directly, so fall back to Guru.user.id raw as a second attempt.
+    const candidates = [botId, Guru.user?.id].filter(Boolean);
+    const tried = new Set();
+
+    for (const jid of candidates) {
+        if (tried.has(jid)) continue;
+        tried.add(jid);
+        try {
+            const pic = await Guru.profilePictureUrl(jid, "image");
+            if (pic) return pic;
+        } catch (err) {
+            console.warn(`[menu-pic] profilePictureUrl(${jid}) failed: ${err.message}`);
+        }
     }
 
-    const theme = THEMES[key] || THEMES.premium;
-    const data = await buildMenuData(conText);
+    console.warn("[menu-pic] No bot profile picture available — set one with .setmenupic, or make sure the bot's WhatsApp account has a profile photo set.");
+    return null;
+}
+
+async function sendMenuMsg(Guru, from, text, conText) {
+    const { mek, botName, newsletterJid, sender, botId } = conText;
+
+    // Prefer the requesting user's own profile picture for the menu card.
+    // Falls back to the bot's custom/own picture if the user has none set
+    // or their privacy settings block it.
+    let picUrl = null;
+    if (sender) {
+        try {
+            picUrl = await Guru.profilePictureUrl(sender, "image");
+        } catch (_) {
+            // No photo, or privacy settings prevent fetching it — fall through
+        }
+    }
+    if (!picUrl) picUrl = await getMenuPicUrl(Guru, botId);
+
+    try {
+        const base = {
+            caption: text.trim(),
+            contextInfo: {
+                mentionedJid: [sender],
+                forwardingScore: 5,
+                isForwarded: true,
+                forwardedNewsletterMessageInfo: {
+                    newsletterJid: newsletterJid || "120363406649804510@newsletter",
+                    newsletterName: botName || "LUKA-XMD",
+                    serverMessageId: 0,
+                },
+            },
+        };
+        if (picUrl) {
+            await Guru.sendMessage(from, { image: { url: picUrl }, ...base }, { quoted: mek });
+        } else {
+            const { caption, ...rest } = base;
+            await Guru.sendMessage(from, { text: caption, ...rest }, { quoted: mek });
+        }
+    } catch {
+        await Guru.sendMessage(from, { text: text.trim() }, { quoted: mek });
+    }
+}
+
+// ─── 1. SETMENU ───────────────────────────────────────────────────────────────
+
+gmd(
+    {
+        pattern: "setmenu",
+        aliases: ["menutheme", "menudesign", "themenu"],
+        react: "🎨",
+        category: "owner",
+        description: "Change the bot menu design. Usage: .setmenu [1-11] or .setmenu to list",
+    },
+    async (from, Guru, conText) => {
+        const { reply, react, isSuperUser, args, botFooter } = conText;
+
+        if (!isSuperUser) { await react("❌"); return reply("❌ Owner Only Command!"); }
+
+        const current = (await getSetting("MENU_THEME")) || "ultra";
+
+        if (!args[0]) {
+            const list = THEME_KEYS.map((key, i) => {
+                const t   = THEMES[key];
+                const cur = key === current ? " ✅ *[ACTIVE]*" : "";
+                return `*${i + 1}.* ${t.name}${cur}\n   _${t.description}_`;
+            }).join("\n\n");
+
+            return reply(
+`┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🎨  *MENU THEMES*
+┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━┃
+┃  *${THEME_KEYS.length}* themes available
+┃  Current: *${THEMES[current]?.name || current}*
+┃
+┃  *.setmenu <number>* — switch
+┃  *.previewmenu <n>*  — preview
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+${list}
+
+> _${botFooter}_`
+            );
+        }
+
+        const n = parseInt(args[0], 10);
+        if (isNaN(n) || n < 1 || n > THEME_KEYS.length) {
+            await react("❌");
+            return reply(`❌ Enter a number between 1 and ${THEME_KEYS.length}.\nSend *.setmenu* to see all themes.`);
+        }
+
+        const key = THEME_KEYS[n - 1];
+        await setSetting("MENU_THEME", key);
+        await react("⏳");
+
+        const data = await buildMenuData(conText);
+        const text = `✅ *Theme switched to ${THEMES[key].name}!*\n\nHere's a preview:\n\n${THEMES[key].render(data)}`;
+        await sendMenuMsg(Guru, from, text, conText);
+        await react("✅");
+    }
+);
+
+// ─── 2. PREVIEWMENU ───────────────────────────────────────────────────────────
+
+gmd(
+    {
+        pattern: "previewmenu",
+        aliases: ["menupreview", "prevmenu"],
+        react: "👁️",
+        category: "owner",
+        description: "Preview a menu theme without switching. Usage: .previewmenu <1-11>",
+    },
+    async (from, Guru, conText) => {
+        const { reply, react, isSuperUser, args } = conText;
+
+        if (!isSuperUser) { await react("❌"); return reply("❌ Owner Only Command!"); }
+
+        const n = parseInt(args[0], 10);
+        if (isNaN(n) || n < 1 || n > THEME_KEYS.length) {
+            await react("❌");
+            return reply(`❌ Usage: .previewmenu <1-${THEME_KEYS.length}>\nSend *.setmenu* to see the list.`);
+        }
+
+        const key  = THEME_KEYS[n - 1];
+        const data = await buildMenuData(conText);
+        const text = `👁️ *Preview — ${THEMES[key].name}*\n_(Not applied. Send .setmenu ${n} to apply.)_\n\n${THEMES[key].render(data)}`;
+        await sendMenuMsg(Guru, from, text, conText);
+        await react("✅");
+    }
+);
+
+// ─── 3. SETBOTPIC ─────────────────────────────────────────────────────────────
+
+gmd(
+    {
+        pattern: "setbotpic",
+        aliases: ["botpic", "changebotpic", "botimage"],
+        react: "🖼️",
+        category: "owner",
+        description: "Change the bot WhatsApp profile picture. Quote an image or send a URL.",
+    },
+    async (from, Guru, conText) => {
+        const { reply, react, isSuperUser, quoted, quotedMsg, q } = conText;
+
+        if (!isSuperUser) { await react("❌"); return reply("❌ Owner Only Command!"); }
+
+        const quotedImg = quotedMsg?.imageMessage
+            || quoted?.imageMessage
+            || quoted?.message?.imageMessage
+            || null;
+
+        const hasUrl = q && q.trim().startsWith("http");
+
+        if (!quotedImg && !hasUrl) {
+            await react("❌");
+            return reply(
+                "❌ Please quote an image *or* provide a URL!\n\n" +
+                "Examples:\n" +
+                "• Quote an image → send *.setbotpic*\n" +
+                "• *.setbotpic https://example.com/photo.jpg*"
+            );
+        }
+
+        await react("⏳");
+        let tempPath = null;
+
+        try {
+            const { Jimp } = require("jimp"); // lazy-loaded: only when a bot pic is actually set
+            let imageBuffer;
+
+            if (quotedImg) {
+                tempPath = await Guru.downloadAndSaveMediaMessage(quotedImg, "temp_botpic");
+                const img = await Jimp.read(tempPath);
+                img.scaleToFit({ w: 720, h: 720 });
+                imageBuffer = await img.getBuffer("image/jpeg");
+            } else {
+                const img = await Jimp.read(q.trim());
+                img.scaleToFit({ w: 720, h: 720 });
+                imageBuffer = await img.getBuffer("image/jpeg");
+            }
+
+            await Guru.query({
+                tag: "iq",
+                attrs: { to: S_WHATSAPP_NET, type: "set", xmlns: "w:profile:picture" },
+                content: [{ tag: "picture", attrs: { type: "image" }, content: imageBuffer }],
+            });
+
+            if (hasUrl) await setSetting("BOT_PIC", q.trim());
+
+            await react("✅");
+            await reply("✅ Bot profile picture updated!\nThe menu image has also been updated.");
+        } catch (error) {
+            await react("❌");
+            await reply(`❌ Failed to update picture: ${error.message}`);
+        } finally {
+            if (tempPath) await fs.unlink(tempPath).catch(() => {});
+        }
+    }
+);
+
+// ─── 4. SETMENUPIC ────────────────────────────────────────────────────────────
+
+gmd(
+    {
+        pattern: "setmenupic",
+        aliases: ["menupic", "menuimage", "setmenuimg"],
+        react: "🖼️",
+        category: "owner",
+        description: "Set the image shown in .menu. Usage: .setmenupic <URL> or quote an image.",
+    },
+    async (from, Guru, conText) => {
+        const { reply, react, isSuperUser, quoted, quotedMsg, q } = conText;
+
+        if (!isSuperUser) { await react("❌"); return reply("❌ Owner Only Command!"); }
+
+        const quotedImg = quotedMsg?.imageMessage
+            || quoted?.imageMessage
+            || quoted?.message?.imageMessage
+            || null;
+
+        const hasUrl = q && q.trim().startsWith("http");
+
+        if (!quotedImg && !hasUrl) {
+            await react("❌");
+            return reply(
+                "❌ Please quote an image *or* provide a URL!\n\n" +
+                "Examples:\n" +
+                "• Quote an image → send *.setmenupic*\n" +
+                "• *.setmenupic https://example.com/banner.jpg*"
+            );
+        }
+
+        await react("⏳");
+        let tempPath = null;
+
+        try {
+            let finalUrl;
+
+            if (hasUrl) {
+                finalUrl = q.trim();
+            } else {
+                const { uploadToCatbox } = require("../luka");
+                tempPath = await Guru.downloadAndSaveMediaMessage(quotedImg, "temp_menupic");
+                finalUrl = await uploadToCatbox(tempPath);
+                if (!finalUrl) throw new Error("Upload to catbox failed — try a URL instead.");
+            }
+
+            await setSetting("MENU_PIC_CUSTOM", finalUrl);
+            await react("✅");
+            await reply(`✅ Menu image updated!\n\nURL: ${finalUrl}\n\nSend *.menu* to see the result.`);
+        } catch (error) {
+            await react("❌");
+            await reply(`❌ Failed: ${error.message}`);
+        } finally {
+            if (tempPath) await fs.unlink(tempPath).catch(() => {});
+        }
+    }
+);
+
+// ─── 5. SETFOOTER ─────────────────────────────────────────────────────────────
+
+gmd(
+    {
+        pattern: "setfooter",
+        aliases: ["footer", "botfooter", "changefooter"],
+        react: "✏️",
+        category: "owner",
+        description: "Change the bot footer shown in menus. Usage: .setfooter <text>",
+    },
+    async (from, Guru, conText) => {
+        const { reply, react, isSuperUser, q } = conText;
+
+        if (!isSuperUser) { await react("❌"); return reply("❌ Owner Only Command!"); }
+
+        if (!q || !q.trim()) {
+            await react("❌");
+            const cur = (await getSetting("FOOTER")) || "Not set";
+            return reply(`❌ Provide footer text!\n\nCurrent: _${cur}_\n\nExample: *.setfooter Powered by ULTRA-GURU 🔥*`);
+        }
+
+        await setSetting("FOOTER", q.trim());
+        await react("✅");
+        return reply(`✅ Footer updated to:\n\n_${q.trim()}_`);
+    }
+);
+
+// ─── 6. SETCAPTION ────────────────────────────────────────────────────────────
+
+gmd(
+    {
+        pattern: "setcaption",
+        aliases: ["caption", "botcaption", "changecaption"],
+        react: "✏️",
+        category: "owner",
+        description: "Change the bot caption/tagline. Usage: .setcaption <text>",
+    },
+    async (from, Guru, conText) => {
+        const { reply, react, isSuperUser, q } = conText;
+
+        if (!isSuperUser) { await react("❌"); return reply("❌ Owner Only Command!"); }
+
+        if (!q || !q.trim()) {
+            await react("❌");
+            const cur = (await getSetting("CAPTION")) || "Not set";
+            return reply(`❌ Provide a caption!\n\nCurrent: _${cur}_\n\nExample: *.setcaption ⚡ ULTRA GURU | Ultra Fast*`);
+        }
+
+        await setSetting("CAPTION", q.trim());
+        await react("✅");
+        return reply(`✅ Caption updated to:\n\n_${q.trim()}_`);
+    }
+);
+
+// ─── 7. SETBOTNAME ────────────────────────────────────────────────────────────
+
+gmd(
+    {
+        pattern: "setbotname",
+        aliases: ["botname", "namebot", "changename", "renamebot"],
+        react: "✏️",
+        category: "owner",
+        description: "Change the bot display name in menus. Usage: .setbotname <name>",
+    },
+    async (from, Guru, conText) => {
+        const { reply, react, isSuperUser, q } = conText;
+
+        if (!isSuperUser) { await react("❌"); return reply("❌ Owner Only Command!"); }
+
+        if (!q || !q.trim()) {
+            await react("❌");
+            const cur = (await getSetting("BOT_NAME")) || "LUKA-XMD";
+            return reply(`❌ Provide a name!\n\nCurrent: *${cur}*\n\nExample: *.setbotname MY GURU BOT*`);
+        }
+
+        await setSetting("BOT_NAME", q.trim());
+
+        try { await Guru.updateProfileName(q.trim()); } catch {}
+
+        await react("✅");
+        return reply(`✅ Bot name set to: *${q.trim()}*\n_(WhatsApp profile name also updated)_`);
+    }
+);
+
+// ─── 8. SETEXPIRY ─────────────────────────────────────────────────────────────
+
+gmd(
+    {
+        pattern: "setexpiry",
+        aliases: ["expiry", "setlicence", "licence", "licensedate"],
+        react: "🔒",
+        category: "owner",
+        description: "Set the bot licence expiry date. Usage: .setexpiry YYYY-MM-DD",
+    },
+    async (from, Guru, conText) => {
+        const { reply, react, isSuperUser, args } = conText;
+
+        if (!isSuperUser) { await react("❌"); return reply("❌ Owner Only Command!"); }
+
+        const { expiryLine, parseExpiryDate } = require("../luka/expiry");
+
+        if (!args[0]) {
+            await react("ℹ️");
+            const current = await expiryLine();
+            return reply(
+`┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🔒  *LICENCE EXPIRY*
+┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━┃
+┃  Current: ${current}
+┃
+┃  *Usage:* .setexpiry YYYY-MM-DD
+┃  *Example:* .setexpiry 2026-12-31
+┃
+┃  Set EXPIRY_DATE in Heroku
+┃  config vars for persistence.
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛`
+            );
+        }
+
+        const raw = args[0].trim();
+        const parsed = parseExpiryDate(raw);
+        if (!parsed) {
+            await react("❌");
+            return reply(`❌ Invalid date format!\n\nAccepted: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY\n\nExample: *.setexpiry 2026-12-31*`);
+        }
+
+        await setSetting("BOT_EXPIRY_DATE", raw);
+        const status = await expiryLine();
+        await react("✅");
+        return reply(`✅ *Expiry date set!*\n\n🔒 ${status}\n\n_Note: Set EXPIRY_DATE in Heroku config vars for persistence across restarts._`);
+    }
+);
+
+// ─── 9. DESIGNINFO ────────────────────────────────────────────────────────────
+
+gmd(
+    {
+        pattern: "designinfo",
+        aliases: ["mydesign", "designstatus", "currentdesign"],
+        react: "🎨",
+        category: "owner",
+        description: "Show current bot design settings.",
+    },
+    async (from, Guru, conText) => {
+        const { reply, react, isSuperUser } = conText;
+
+        if (!isSuperUser) { await react("❌"); return reply("❌ Owner Only Command!"); }
+
+        const [theme, pic, footer, caption, name] = await Promise.all([
+            getSetting("MENU_THEME"),
+            getSetting("BOT_PIC"),
+            getSetting("FOOTER"),
+            getSetting("CAPTION"),
+            getSetting("BOT_NAME"),
+        ]);
+
+        const { expiryLine } = require("../luka/expiry");
+        const expStatus = await expiryLine();
+
+        const themeKey  = theme || "ultra";
+        const themeName = THEMES[themeKey]?.name || themeKey;
+        const themeNum  = THEME_KEYS.indexOf(themeKey) + 1;
+        const picShort  = (pic || "Not set").length > 45
+            ? (pic || "").slice(0, 42) + "..."
+            : (pic || "Not set");
+
+        await react("✅");
+        return reply(
+`┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃  🎨  *BOT DESIGN SETTINGS*
+┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━┃
+┃  Menu Theme : ${themeName} (${themeNum}/${THEME_KEYS.length})
+┃  Bot Name   : ${name || "ULTRA GURU"}
+┃  Footer     : _${footer || "Not set"}_
+┃  Caption    : _${caption || "Not set"}_
+┃  Menu Pic   : ${picShort}
+┃━━━━━━━━━━━━━━━━━━━━━━━━━━━━┃
+┃  🔒 ${expStatus}
+┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+
+*Commands:*
+◈ *.setmenu* — browse & switch themes
+◈ *.previewmenu <n>* — preview a theme
+◈ *.setbotname <text>* — change bot name
+◈ *.setbotpic* — change profile + menu image
+◈ *.setmenupic* — change menu image only
+◈ *.setfooter <text>* — change footer
+◈ *.setcaption <text>* — change caption
+◈ *.setexpiry YYYY-MM-DD* — set expiry date
+◈ *.resetdesign* — reset all to defaults`
+        );
+    }
+);
+
+// ─── 10. RESETDESIGN ──────────────────────────────────────────────────────────
+
+const _resetConfirm = new Map();
+
+gmd(
+    {
+        pattern: "resetdesign",
+        aliases: ["designreset", "resettheme"],
+        react: "🔄",
+        category: "owner",
+        description: "Reset all bot design settings to defaults. Run twice to confirm.",
+    },
+    async (from, Guru, conText) => {
+        const { reply, react, isSuperUser } = conText;
+
+        if (!isSuperUser) { await react("❌"); return reply("❌ Owner Only Command!"); }
+
+        const now     = Date.now();
+        const pending = _resetConfirm.get(from);
+
+        if (!pending || now - pending > 25_000) {
+            _resetConfirm.set(from, now);
+            await react("⚠️");
+            return reply(
+                "⚠️ *Reset Confirmation*\n\n" +
+                "This will reset:\n◈ Menu theme → ultra\n◈ Bot name → default\n◈ Footer, caption, pic → defaults\n\n" +
+                "Send *.resetdesign* again within *25 seconds* to confirm."
+            );
+        }
+
+        _resetConfirm.delete(from);
+
+        await Promise.all([
+            resetSetting("MENU_THEME"),
+            resetSetting("BOT_PIC"),
+            resetSetting("FOOTER"),
+            resetSetting("CAPTION"),
+            resetSetting("BOT_NAME"),
+        ]);
+
+        await react("✅");
+        return reply("✅ All design settings reset to defaults!\n\nSend *.menu* to see the result.");
+    }
+);
+
+// ─── exported for general.js ──────────────────────────────────────────────────
+
+async function buildThemedMenu(conText, Guru) {
+    const themeKey = (await getSetting("MENU_THEME")) || "ultra";
+    const theme    = THEMES[themeKey] || THEMES.ultra;
+    const data     = await buildMenuData(conText);
     return theme.render(data);
 }
 
-async function sendMenuMsg(Guru, from, text, conText = {}) {
-    const quoted = conText.mek ? { quoted: conText.mek } : {};
-
-    try {
-        let picUrl = MENU_IMAGE_URL;
-
-        try {
-            picUrl = (await getSetting("MENU_PIC_CUSTOM")) || MENU_IMAGE_URL;
-        } catch {}
-
-        return await Guru.sendMessage(
-            from,
-            {
-                image: { url: picUrl },
-                caption: String(text).trim()
-            },
-            quoted
-        );
-    } catch (error) {
-        console.error("[MNYANDWA-MD] Menu image send failed:", error.message);
-
-        return Guru.sendMessage(
-            from,
-            { text: String(text).trim() },
-            quoted
-        );
-    }
-}
-
-gmd({
-    pattern: "setmenu",
-    aliases: ["menutheme", "menudesign", "themenu"],
-    category: "owner",
-    description: "Change menu theme"
-}, async (from, Guru, conText) => {
-    const { reply, isSuperUser, args = [], react } = conText;
-
-    if (!isSuperUser) return reply("❌ Owner Only Command!");
-
-    if (!args[0]) {
-        const current = (await getSetting("MENU_THEME")) || "premium";
-        const list = THEME_KEYS.map((key, i) =>
-            `${i + 1}. ${THEMES[key].name}${key === current ? " ✅ ACTIVE" : ""}\n   ${THEMES[key].description}`
-        ).join("\n\n");
-
-        return reply(`🎨 MNYANDWA-MD MENU THEMES\n\n${list}\n\nUsage: .setmenu <number>`);
-    }
-
-    const number = Number(args[0]);
-
-    if (!Number.isInteger(number) || number < 1 || number > THEME_KEYS.length) {
-        return reply(`❌ Choose a number from 1-${THEME_KEYS.length}.`);
-    }
-
-    const key = THEME_KEYS[number - 1];
-    await setSetting("MENU_THEME", key);
-
-    if (react) await react("✅");
-    return reply(`✅ Theme changed to ${THEMES[key].name}\nSend .menu to view it.`);
-});
-
-gmd({
-    pattern: "previewmenu",
-    aliases: ["menupreview", "prevmenu"],
-    category: "owner",
-    description: "Preview a menu theme"
-}, async (from, Guru, conText) => {
-    const { reply, isSuperUser, args = [] } = conText;
-
-    if (!isSuperUser) return reply("❌ Owner Only Command!");
-
-    const number = Number(args[0]);
-
-    if (!Number.isInteger(number) || number < 1 || number > THEME_KEYS.length) {
-        return reply(`Usage: .previewmenu <number>\nAvailable: 1-${THEME_KEYS.length}`);
-    }
-
-    const key = THEME_KEYS[number - 1];
-    const data = await buildMenuData(conText);
-    return sendMenuMsg(Guru, from, `👁️ PREVIEW: ${THEMES[key].name}\n\n${THEMES[key].render(data)}`, conText);
-});
-
-module.exports = {
-    buildThemedMenu,
-    THEMES,
-    THEME_KEYS,
-    buildMenuData,
-    sendMenuMsg,
-    getSortedCategories,
-    CAT_ICONS
-};
+module.exports = { buildThemedMenu, THEMES, THEME_KEYS, buildMenuData, sendMenuMsg, getSortedCategories, CAT_ICONS, getMenuPicUrl };
