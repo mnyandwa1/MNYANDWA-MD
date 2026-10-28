@@ -1,196 +1,466 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sw">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BLACK PANTHER MD — Link Bot</title>
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{min-height:100vh;background:linear-gradient(135deg,#0a0a0a 0%,#0a1a2a 50%,#0a0f1e 100%);font-family:'Segoe UI',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:20px}
-        .card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:40px 36px;max-width:480px;width:100%;backdrop-filter:blur(12px);box-shadow:0 8px 48px rgba(0,0,0,0.6)}
-        h1{color:#fff;font-size:1.5rem;font-weight:700;text-align:center;margin-bottom:4px}
-        .sub{color:#8899aa;font-size:.85rem;text-align:center;margin-bottom:28px}
-        label{display:block;color:#aabbd0;font-size:.8rem;font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
-        input{width:100%;padding:13px 16px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;font-size:1rem;outline:none;transition:border-color .2s}
-        input:focus{border-color:#4ea8ff}
-        input::placeholder{color:#445566}
-        button{width:100%;margin-top:16px;padding:14px;background:linear-gradient(135deg,#1a6fff,#0a4fcc);border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;transition:opacity .2s}
-        button:hover{opacity:.88}
-        button:disabled{opacity:.4;cursor:not-allowed}
-        .step{margin-top:28px;display:none}
-        .step.active{display:block}
-        .code-box{background:rgba(30,215,96,.1);border:2px solid rgba(30,215,96,.3);border-radius:14px;padding:24px;text-align:center;margin:20px 0}
-        .code{font-size:2.6rem;font-weight:900;color:#1ed760;letter-spacing:6px;font-family:'Courier New',monospace}
-        .code-label{color:#aac;font-size:.78rem;margin-top:6px}
-        .instructions{background:rgba(255,255,255,0.04);border-radius:10px;padding:16px;margin-top:16px}
-        .instructions ol{color:#aabbd0;font-size:.85rem;line-height:1.9;padding-left:20px}
-        .instructions ol li{margin-bottom:2px}
-        .success-box{background:rgba(30,215,96,.1);border:2px solid rgba(30,215,96,.4);border-radius:14px;padding:20px;margin:16px 0}
-        .session-title{color:#1ed760;font-weight:700;font-size:.9rem;margin-bottom:10px}
-        .session-val{background:rgba(0,0,0,.4);border-radius:8px;padding:12px;font-family:'Courier New',monospace;font-size:.72rem;color:#7ff;word-break:break-all;max-height:110px;overflow-y:auto;line-height:1.4}
-        .copy-btn{width:100%;margin-top:10px;padding:11px;background:rgba(30,215,96,.2);border:1px solid rgba(30,215,96,.4);border-radius:8px;color:#1ed760;font-weight:700;font-size:.9rem;cursor:pointer;transition:background .2s}
-        .copy-btn:hover{background:rgba(30,215,96,.3)}
-        .warning{background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.3);border-radius:10px;padding:14px;margin-top:16px;color:#ffa;font-size:.82rem;line-height:1.6}
-        .warning strong{color:#ffd740}
-        .status-msg{text-align:center;color:#8899aa;font-size:.85rem;margin-top:14px;min-height:20px}
-        .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:#4ea8ff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        .err-box{background:rgba(255,60,60,.1);border:1px solid rgba(255,60,60,.3);border-radius:10px;padding:14px;margin-top:14px;color:#ff9999;font-size:.84rem}
-        .back-btn{width:100%;margin-top:12px;padding:11px;background:transparent;border:1px solid rgba(255,255,255,.15);border-radius:8px;color:#889;font-size:.85rem;cursor:pointer;transition:border-color .2s}
-        .back-btn:hover{border-color:rgba(255,255,255,.35)}
-        .badge{display:inline-block;background:rgba(78,168,255,.15);border:1px solid rgba(78,168,255,.3);border-radius:20px;padding:3px 12px;font-size:.75rem;color:#4ea8ff;margin-bottom:18px}
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MNYANDWA-MD | PAIRING PRO</title>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --green: #00ff9c;
+  --purple: #bd00ff;
+  --cyan: #00eaff;
+  --dark: #03060d;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--dark);
+  color: white;
+  font-family: Arial, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  overflow-x: hidden;
+}
+
+/* ANIMATED CYBER BACKGROUND */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 20% 30%,
+      #00ff9c55, transparent 30%),
+    radial-gradient(circle at 80% 20%,
+      #bd00ff66, transparent 30%),
+    radial-gradient(circle at 50% 80%,
+      #00eaff44, transparent 35%);
+  animation: backgroundMove 8s ease-in-out infinite alternate;
+}
+
+@keyframes backgroundMove {
+  from {
+    transform: rotate(0deg) scale(1);
+    filter: hue-rotate(0deg);
+  }
+  to {
+    transform: rotate(12deg) scale(1.2);
+    filter: hue-rotate(65deg);
+  }
+}
+
+/* MOVING SCAN LINES */
+.scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: repeating-linear-gradient(
+    transparent 0px,
+    transparent 3px,
+    #00ff9c08 4px
+  );
+}
+
+/* FALLING CYBER PARTICLES */
+canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.container {
+  width: 100%;
+  max-width: 460px;
+  position: relative;
+  padding: 30px 24px;
+  border-radius: 22px;
+  background: rgba(4, 9, 18, 0.94);
+  border: 1px solid var(--green);
+  box-shadow:
+    0 0 15px #00ff9c55,
+    0 0 45px #00ff9c22,
+    inset 0 0 30px #00ff9c08;
+  animation: cardGlow 3s infinite alternate;
+}
+
+@keyframes cardGlow {
+  from {
+    box-shadow: 0 0 15px #00ff9c44,
+                0 0 30px #bd00ff22;
+  }
+  to {
+    box-shadow: 0 0 30px #00ff9c88,
+                0 0 55px #bd00ff55;
+  }
+}
+
+.logo {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 2px solid var(--green);
+  border-radius: 50%;
+  font-size: 35px;
+  color: var(--green);
+  text-shadow: 0 0 20px var(--green);
+  box-shadow: 0 0 25px #00ff9c77;
+  animation: logoPulse 2s infinite;
+}
+
+@keyframes logoPulse {
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 45px #00ff9caa;
+  }
+}
+
+h1 {
+  text-align: center;
+  font-size: 29px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: var(--green);
+  text-shadow: 0 0 15px #00ff9c99;
+}
+
+.subtitle {
+  text-align: center;
+  color: #bca5ff;
+  font-size: 11px;
+  letter-spacing: 4px;
+  margin-top: 10px;
+  margin-bottom: 30px;
+}
+
+.line {
+  height: 1px;
+  margin-bottom: 25px;
+  background: linear-gradient(
+    90deg, transparent, var(--green),
+    var(--purple), transparent
+  );
+}
+
+label {
+  display: block;
+  color: var(--green);
+  font-size: 12px;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+input {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid #00ff9c88;
+  border-radius: 10px;
+  background: #02060c;
+  color: white;
+  font-size: 18px;
+  outline: none;
+  transition: .3s;
+}
+
+input:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 20px #bd00ff55;
+}
+
+.hint {
+  color: #8896ad;
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+button {
+  width: 100%;
+  padding: 16px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(
+    100deg, #00d878, #00ffb3
+  );
+  color: #00180e;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: .3s;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px #00ff9c88;
+}
+
+button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+.result {
+  margin-top: 25px;
+  padding: 20px 12px;
+  background: #080d19;
+  border: 1px solid #bd00ff88;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.result-title {
+  font-size: 12px;
+  color: #d78cff;
+  letter-spacing: 2px;
+}
+
+#pairCode {
+  margin: 18px 0;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: var(--green);
+  text-shadow: 0 0 15px #00ff9c99;
+  overflow-wrap: anywhere;
+}
+
+#status {
+  font-size: 12px;
+  color: #9daec4;
+  line-height: 1.7;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 25px;
+  color: #75849a;
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+
+.footer span {
+  color: var(--green);
+}
+
+@media (max-width: 380px) {
+  h1 { font-size: 24px; }
+  .container { padding: 25px 17px; }
+  #pairCode { font-size: 25px; }
+}
+</style>
 </head>
+
 <body>
-<div class="card">
-    <h1>📱 Link BLACK PANTHER MD</h1>
-    <p class="sub">Re-link your WhatsApp number to get a new SESSION_ID</p>
+<div class="scanlines"></div>
+<canvas id="matrix"></canvas>
 
-    <!-- STEP 1: Enter phone -->
-    <div class="step active" id="step1">
-        <div style="text-align:center;margin-bottom:20px">
-            <span class="badge">Step 1 of 3 — Enter your number</span>
-        </div>
-        <label for="phone">Your WhatsApp Number</label>
-        <input type="tel" id="phone" placeholder="e.g. 254763986398" autocomplete="off">
-        <p style="color:#556;font-size:.78rem;margin-top:6px">Include country code, no + sign. E.g. 254700000000</p>
-        <button id="pairBtn" onclick="startPair()">Get Pairing Code →</button>
-        <div class="status-msg" id="status1"></div>
+<main class="container">
+
+  <div class="logo">✦</div>
+
+  <h1>MNYANDWA-MD</h1>
+  <div class="subtitle">PAIRING SYSTEM PRO</div>
+
+  <div class="line"></div>
+
+  <label for="phone">WHATSAPP PHONE NUMBER</label>
+
+  <input
+    id="phone"
+    type="tel"
+    inputmode="numeric"
+    value="255672514834"
+    placeholder="255XXXXXXXXX"
+  >
+
+  <div class="hint">
+    Ingiza namba yenye country code.
+  </div>
+
+  <button id="generate">
+    ⚡ GENERATE PAIRING CODE
+  </button>
+
+  <div class="result">
+    <div class="result-title">
+      YOUR PAIRING CODE
     </div>
 
-    <!-- STEP 2: Show pairing code -->
-    <div class="step" id="step2">
-        <div style="text-align:center;margin-bottom:20px">
-            <span class="badge">Step 2 of 3 — Enter this code in WhatsApp</span>
-        </div>
-        <div class="code-box">
-            <div class="code" id="pairingCode">---- ----</div>
-            <div class="code-label">Enter this code in WhatsApp Linked Devices</div>
-        </div>
-        <div class="instructions">
-            <ol>
-                <li>Open <strong style="color:#fff">WhatsApp</strong> on your phone</li>
-                <li>Tap <strong style="color:#fff">⋮ Menu → Linked Devices</strong></li>
-                <li>Tap <strong style="color:#fff">Link a Device</strong></li>
-                <li>Tap <strong style="color:#fff">"Link with phone number instead"</strong></li>
-                <li>Enter the code above</li>
-            </ol>
-        </div>
-        <div class="status-msg" id="status2"><span class="spinner"></span> Waiting for you to enter the code…</div>
-        <div class="err-box" id="errBox2" style="display:none"></div>
-        <button class="back-btn" onclick="goBack()">← Use a different number</button>
-    </div>
+    <div id="pairCode">••••-••••</div>
 
-    <!-- STEP 3: Success — show SESSION_ID -->
-    <div class="step" id="step3">
-        <div style="text-align:center;margin-bottom:20px">
-            <span class="badge">Step 3 of 3 — Save your SESSION_ID</span>
-        </div>
-        <div class="success-box">
-            <div class="session-title">✅ Linked! Your new SESSION_ID:</div>
-            <div class="session-val" id="sessionVal">PANTHER~...</div>
-            <button class="copy-btn" onclick="copySession()">📋 Copy SESSION_ID</button>
-        </div>
-        <div class="warning">
-            <strong>⚡ Next steps:</strong><br>
-            1. Copy the SESSION_ID above<br>
-            2. Go to your Replit project → <strong>Secrets</strong><br>
-            3. Update <code style="background:rgba(0,0,0,.3);padding:1px 5px;border-radius:4px">SESSION_ID</code> with the copied value<br>
-            4. Click <strong>Restart</strong> on the workflow — bot will connect!
-        </div>
-        <button class="back-btn" style="margin-top:16px" onclick="goBack()">← Link another number</button>
+    <div id="status">
+      SYSTEM READY — INGIZA NAMBA YAKO
     </div>
-</div>
+  </div>
+
+  <div class="footer">
+    POWERED BY <span>MNYANDWA-MD</span>
+  </div>
+
+</main>
 
 <script>
+// MATRIX BACKGROUND ANIMATION
+const canvas = document.getElementById("matrix");
+const ctx = canvas.getContext("2d");
+
+let columns = [];
+const fontSize = 14;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  columns = Array(
+    Math.ceil(canvas.width / fontSize)
+  ).fill(0);
+}
+
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+function drawMatrix() {
+  ctx.fillStyle = "rgba(3, 6, 13, 0.12)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.font = fontSize + "px monospace";
+
+  columns.forEach((y, i) => {
+    const chars = "01MNYANDWAMD{}<>/";
+    const char = chars[
+      Math.floor(Math.random() * chars.length)
+    ];
+
+    ctx.fillStyle =
+      Math.random() > 0.92 ? "#bd00ff" : "#00ff9c";
+
+    ctx.fillText(
+      char,
+      i * fontSize,
+      y * fontSize
+    );
+
+    if (
+      y * fontSize > canvas.height &&
+      Math.random() > 0.975
+    ) {
+      columns[i] = 0;
+    } else {
+      columns[i]++;
+    }
+  });
+}
+
+setInterval(drawMatrix, 60);
+
+
+// CONNECT TO YOUR PAIRING BACKEND
+const button = document.getElementById("generate");
+const phoneInput = document.getElementById("phone");
+const codeDisplay = document.getElementById("pairCode");
+const statusDisplay = document.getElementById("status");
+
 let pollTimer = null;
 
-function show(stepId) {
-    ['step1','step2','step3'].forEach(id => {
-        document.getElementById(id).classList.remove('active');
-    });
-    document.getElementById(stepId).classList.add('active');
-}
+async function refreshStatus() {
+  const response = await fetch("/api/status");
+  const data = await response.json();
 
-function setStatus(elId, html) {
-    document.getElementById(elId).innerHTML = html;
-}
+  statusDisplay.textContent =
+    data.error ||
+    "STATUS: " + (data.status || "unknown").toUpperCase();
 
-async function startPair() {
-    const phone = document.getElementById('phone').value.trim().replace(/\D/g,'');
-    if (!phone || phone.length < 7) {
-        setStatus('status1', '<span style="color:#f88">❌ Please enter a valid phone number.</span>');
-        return;
-    }
-    const btn = document.getElementById('pairBtn');
-    btn.disabled = true;
-    setStatus('status1', '<span class="spinner"></span> Requesting pairing code…');
+  if (data.code) {
+    codeDisplay.textContent = data.code;
+  }
 
-    try {
-        const res = await fetch('/api/pair', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ phone })
-        });
-        const data = await res.json();
-        if (!data.ok) {
-            setStatus('status1', `<span style="color:#f88">❌ ${data.error || 'Failed to start pairing.'}</span>`);
-            btn.disabled = false;
-            return;
-        }
-
-        // Poll for the code
-        pollTimer = setInterval(checkStatus, 2000);
-        setTimeout(() => show('step2'), 400);
-    } catch (e) {
-        setStatus('status1', `<span style="color:#f88">❌ Network error: ${e.message}</span>`);
-        btn.disabled = false;
-    }
-}
-
-async function checkStatus() {
-    try {
-        const res  = await fetch('/api/pair/status');
-        const data = await res.json();
-
-        if (data.status === 'ready' || data.status === 'success') {
-            if (data.code) {
-                document.getElementById('pairingCode').textContent = data.code;
-            }
-        }
-
-        if (data.status === 'success' && data.sessionId) {
-            clearInterval(pollTimer);
-            document.getElementById('sessionVal').textContent = data.sessionId;
-            show('step3');
-        } else if (data.status === 'error') {
-            clearInterval(pollTimer);
-            const errBox = document.getElementById('errBox2');
-            errBox.style.display = 'block';
-            errBox.textContent = '❌ ' + (data.error || 'Pairing failed. Try again.');
-            setStatus('status2', '');
-        }
-    } catch (_) {}
-}
-
-function copySession() {
-    const val = document.getElementById('sessionVal').textContent;
-    navigator.clipboard.writeText(val).then(() => {
-        const btn = document.querySelector('.copy-btn');
-        btn.textContent = '✅ Copied!';
-        setTimeout(() => { btn.textContent = '📋 Copy SESSION_ID'; }, 2500);
-    });
-}
-
-function goBack() {
+  if (data.status === "success") {
+    statusDisplay.textContent =
+      "WHATSAPP CONNECTED SUCCESSFULLY";
     clearInterval(pollTimer);
-    fetch('/api/pair/cancel').catch(()=>{});
-    document.getElementById('pairBtn').disabled = false;
-    setStatus('status1','');
-    setStatus('status2','<span class="spinner"></span> Waiting for you to enter the code…');
-    document.getElementById('errBox2').style.display='none';
-    show('step1');
+    button.disabled = false;
+  }
+
+  if (data.status === "error") {
+    clearInterval(pollTimer);
+    button.disabled = false;
+  }
+
+  if (data.status === "idle") {
+    codeDisplay.textContent = "••••-••••";
+  }
 }
+
+button.addEventListener("click", async () => {
+  const phone = phoneInput.value.replace(/\D/g, "");
+
+  if (phone.length < 7 || phone.length > 15) {
+    statusDisplay.textContent =
+      "ERROR: CHECK YOUR PHONE NUMBER";
+    return;
+  }
+
+  button.disabled = true;
+  codeDisplay.textContent = "WAIT...";
+  statusDisplay.textContent = "REQUESTING PAIRING CODE...";
+
+  try {
+    const response = await fetch("/api/pair/start", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ phone })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Request failed");
+    }
+
+    if (data.code) {
+      codeDisplay.textContent = data.code;
+    }
+
+    statusDisplay.textContent =
+      data.error ||
+      "STATUS: " + data.status.toUpperCase();
+
+    clearInterval(pollTimer);
+    pollTimer = setInterval(async () => {
+      try {
+        await refreshStatus();
+      } catch (_) {}
+    }, 2000);
+
+    if (data.status === "error") {
+      clearInterval(pollTimer);
+      button.disabled = false;
+    }
+  } catch (error) {
+    statusDisplay.textContent =
+      "SERVER ERROR: " + error.message;
+    button.disabled = false;
+  }
+});
 </script>
 </body>
 </html>
