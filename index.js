@@ -1,7 +1,3 @@
-// ════════════════════════════════════════════════════════════════════════════
-//  BLACK PANTHER MD — Bot Entry Point
-//  by Koyoteh | github.com/koyoteh
-// ════════════════════════════════════════════════════════════════════════════
 
 "use strict";
 
@@ -22,7 +18,7 @@ const {
 } = require("@whiskeysockets/baileys");
 
 // ─── Guru Core ───────────────────────────────────────────────────────────────
-require("./guru/gmdHelpers");
+require("./kevo/gmdHelpers");
 
 const {
     logger, commands,
@@ -33,20 +29,20 @@ const {
     createSocketConfig, createContext,
     syncDatabase, initializeSettings, initializeGroupSettings,
     loadPlugins,
-} = require("./guru");
+} = require("./kevo");
 
-const { startCleanup, SQLiteStore }      = require("./guru/database/messageStore");
-const { setupCommandHandler }            = require("./guru/messageHandler");
+const { startCleanup, SQLiteStore }      = require("./kevo/database/messageStore");
+const { setupCommandHandler }            = require("./kevo/messageHandler");
 const {
     setupAutoReact, setupAntiDelete, setupAutoBio,
     setupAntiCall, setupPresence, setupChatBotAndAntiLink,
     setupAntiEdit, setupStatusHandlers,
-} = require("./guru/eventHandlers");
+} = require("./kevo/eventHandlers");
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const PORT            = process.env.PORT || 5000;
-const SESSION_DIR     = path.join(__dirname, "guru", "session");
-const PLUGINS_DIR     = path.join(__dirname, "guruh");
+const SESSION_DIR     = path.join(__dirname, "kevo", "session");
+const PLUGINS_DIR     = path.join(__dirname, "kevoh");
 const MEMORY_LIMIT    = 400 * 1024 * 1024; // 400 MB
 const AUTO_RESTART_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -66,12 +62,12 @@ function startWebServer() {
 
     app.use(express.json());
     app.use(express.static("guru"));
-    app.get("/",       (_req, res) => res.sendFile(path.join(__dirname, "guru", "guru.html")));
-    app.get("/pair",   (_req, res) => res.sendFile(path.join(__dirname, "guru", "pair.html")));
+    app.get("/",       (_req, res) => res.sendFile(path.join(__dirname, "kevo", "guru.html")));
+    app.get("/pair",   (_req, res) => res.sendFile(path.join(__dirname, "kevo", "pair.html")));
     app.get("/health", (_req, res) => res.status(200).json({ status: "alive", uptime: process.uptime() }));
 
     // ── Pairing API ───────────────────────────────────────────────────────────
-    const pairing = require("./guru/pairing");
+    const pairing = require("./kevo/pairing");
 
     app.post("/api/pair", async (req, res) => {
         const phone = (req.body?.phone || "").replace(/\D/g, "");
@@ -139,7 +135,7 @@ function startSystemTasks() {
 
 function startExpiryWatchdog() {
     try {
-        const { startExpiryWatchdog: watch } = require("./guru/expiry");
+        const { startExpiryWatchdog: watch } = require("./kevo/expiry");
 
         const notifyOwner = async (text) => {
             const ownerNum = (process.env.OWNER_NUMBER || "").replace(/[^0-9]/g, "");
@@ -247,7 +243,7 @@ async function onBotConnected(socket) {
 
     // Start scheduler
     try {
-        const { startScheduler } = require("./guru/scheduler");
+        const { startScheduler } = require("./kevo/scheduler");
         startScheduler(socket);
     } catch (e) {
         console.error("[Scheduler] start error:", e.message);
@@ -268,7 +264,7 @@ async function sendStartupMessage(socket, s) {
 
         if (s.STARTING_MESSAGE !== "true") return;
 
-        const { expiryLine } = require("./guru/expiry");
+        const { expiryLine } = require("./kevo/expiry");
         const expLine        = await expiryLine().catch(() => "✅ Active");
 
         const msg = [
@@ -278,7 +274,7 @@ async function sendStartupMessage(socket, s) {
             `▢ 📌 Prefix  : ${s.PREFIX || d.PREFIX}`,
             `▢ 🌐 Mode    : ${modeLabel}`,
             `▢ ⏳ Licence : ${expLine}`,
-            `└──✦ _Powered by GuruTech_ ✦──`,
+            `└──✦ _Powered by Mnyandwa_ ✦──`,
             ``,
             `> _Allow a few seconds to sync._`,
         ].join("\n");
