@@ -7,7 +7,7 @@
   <b>A Powerful WhatsApp Multi-Device Bot</b><br>
   Automate your WhatsApp experience with MNYANDWA-MD.
 </p><p align="center">
-  <img src="https://files.catbox.moe/8rcgs3.jpg" width="85%" alt="MNYANDWA-MD Banner">
+  <img src="https://i.imgur.com/S0vFsHt.jpeg" width="85%" alt="MNYANDWA-MD Banner">
 </p><p align="center">
   <img src="https://img.shields.io/badge/PROJECT-MNYANDWA--MD-00FF99?style=for-the-badge">
   <img src="https://img.shields.io/badge/PLATFORM-WHATSAPP-25D366?style=for-the-badge&logo=whatsapp&logoColor=white">
