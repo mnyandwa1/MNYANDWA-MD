@@ -1,52 +1,25 @@
-# MNYANDWA-MD V2
+<div align="center">👑 MNYANDWA-MD
 
-Standalone WhatsApp bot using Baileys. It does not depend on the old `../luka` command framework.
+POWERFUL WHATSAPP BOT ⚡
 
-## Requirements
-- Node.js 20 or newer
-- A WhatsApp account you own or have permission to link
+""WhatsApp" (https://img.shields.io/badge/WhatsApp-Bot-25D366?style=for-the-badge&logo=whatsapp)" (https://whatsapp.com/)
 
-## Install and run
-```bash
-npm install
-npm start
-```
+📂 REPOSITORY
 
-On first start, enter your WhatsApp number with country code and digits only, for example `2557XXXXXXXX`. The pairing code appears in the terminal. On your phone open WhatsApp > Linked devices > Link a device > Link with phone number, then enter the code.
+<a href="https://github.com/YOUR_USERNAME/MNYANDWA-MD">
+<img src="https://img.shields.io/badge/FORK_REPOSITORY-black?style=for-the-badge&logo=github" alt="Fork Repository">
+</a>🔑 PAIR CODE
 
-The session is saved in `./session`. Keep it private and do not upload it to a public GitHub repository.
+<a href="https://YOUR-PAIR-SITE.onrender.com">
+<img src="https://img.shields.io/badge/GET_PAIR_CODE-25D366?style=for-the-badge&logo=whatsapp" alt="Get Pair Code">
+</a>🚀 DEPLOY TO HEROKU
 
-## Commands
-- `.menu`
-- `.ping`
-- `.alive`
-- `.uptime`
-- `.botinfo`
-- `.owner`
-- `.date`
-- `.jid`
-- `.groupinfo`
-- `.tagall` (group admins only)
-- `.hidetag` (group admins only)
-- `.system`
-- `.ram`
+<a href="https://heroku.com/deploy?template=https://github.com/YOUR_USERNAME/MNYANDWA-MD">
+<img src="https://www.herokucdn.com/deploy/button.svg" alt="Deploy to Heroku">
+</a>---
 
-## Configuration
-Optional environment variables:
-- `PREFIX` (default `.`)
-- `OWNER_NAME` (default `MNYANDWA`)
-- `OWNER_NUMBER` (digits only, country code included)
-- `SESSION_DIR` (default `./session`)
-- `LOG_LEVEL` (default `silent`)
-- `TZ` (default `Africa/Dar_es_Salaam`)
+Features: Music Downloader • Video Downloader • Group Management • WhatsApp Automation
 
-Example:
-```bash
-OWNER_NAME=MNYANDWA OWNER_NUMBER=2557XXXXXXXX PREFIX=. npm start
-```
+ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴍɴʏᴀɴᴅᴡᴀ ❤️
 
-## Important
-- This is a starter bot, not an official WhatsApp Business API integration.
-- Avoid bulk messaging or unsolicited tagging; WhatsApp may restrict accounts that spam.
-- Keep your session credentials private.
-- Some hosting platforms do not preserve local files between deploys. Use persistent storage for the `session` folder or the bot may need to pair again after restarts.
+</div>
