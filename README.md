@@ -25,29 +25,29 @@ Enjoy a simple bot experience with powerful features, easy configuration, and fl
 
 
 
-🔑 Step 1: Get Your Session ID
+🔑 Step 1: GET YOUR SESSION ID
 
 
 <p align="center">
   <a href="https://bony-xmd-sension-generator.onrender.com/" target="_blank">
     <img src="https://img.shields.io/badge/🔑_GET_SESSION_ID-00FF99?style=for-the-badge&logo=whatsapp&logoColor=white" width="260">
   </a>
-</p>Important: Use a trusted session generator and never share your session credentials with anyone. Replace the link above with the official MNYANDWA-MD session generator when available.
+
 
 ----
 
-🍴 Step 2: Fork the Repository
+🍴 Step 2: FORK REPOSITORY
 
 
 <p align="center">
   <a href="https://github.com/" target="_blank">
     <img src="https://img.shields.io/badge/🍴_FORK_REPOSITORY-181717?style=for-the-badge&logo=github&logoColor=white" width="260">
   </a>
-</p>Replace the link above with your MNYANDWA-MD GitHub repository.
+
 
 -----
 
-🚀 Step 3: Deploy Your Bot
+🚀 Step 3: DEPLOY TO HEROKU
 
 
 <p align="center">
