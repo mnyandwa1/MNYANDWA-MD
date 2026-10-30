@@ -75,7 +75,7 @@ async function loadSession() {
                 console.error("╔══════════════════════════════════════════════════════════╗");
                 console.error("║  ❌  SESSION_ID is not set!                              ║");
                 console.error("║  Add SESSION_ID to your platform's environment variables.║");
-                console.error("║  Format:  SESSION_ID=LUKA~xxxx...                        ║");
+                console.error("║  Format:  SESSION_ID=KEVO;~xxxx...                        ║");
                 console.error("╚══════════════════════════════════════════════════════════╝");
                 if (hostEnv === 'replit') {
                     // On Replit, keep the web server alive so the dashboard is accessible
@@ -92,7 +92,7 @@ async function loadSession() {
 ║           📱  LUKA-AI — SESSION SETUP                  ║
 ╠══════════════════════════════════════════════════════════════╣
 ║  Paste your SESSION_ID below and press Enter.                ║
-║  Format:  LUKA~xxxxxxxx...                                ║
+║  Format:  KEVO;~xxxxxxxx...                                ║
 ╚══════════════════════════════════════════════════════════════╝`);
                 sessionId = await new Promise((resolve) => {
                     rl.question('\n> SESSION_ID: ', (answer) => {
@@ -164,10 +164,10 @@ function validateCreds(credsPath) {
 async function processSessionId(sessionId) {
     try {
         // LUKA~ and LUKA~ formats are supported
-        const isValidFormat = sessionId.startsWith('LUKA~') || sessionId.startsWith('LUKA~');
+        const isValidFormat = sessionId.startsWith('KEVO;~') || sessionId.startsWith('KEVO;~');
 
         if (!isValidFormat) {
-            throw new Error("❌ Invalid session format. Expected 'LUKA~.....' or 'LUKA~.....'");
+            throw new Error("❌ Invalid session format. Expected 'KEVO;~.....' or 'KEVO;~.....'");
         }
 
         const [header, b64data] = sessionId.split('~');
