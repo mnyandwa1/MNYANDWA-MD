@@ -40,7 +40,7 @@ Enjoy a simple bot experience with powerful features, easy configuration, and fl
 
 
 <p align="center">
-  <a href="https://github.com/" target="_blank">
+  <a href="https://github.com/mnyandwa1/MNYANDWA-MD" target="_blank">
     <img src="https://img.shields.io/badge/🍴_FORK_REPOSITORY-181717?style=for-the-badge&logo=github&logoColor=white" width="260">
   </a>
 
@@ -51,7 +51,7 @@ Enjoy a simple bot experience with powerful features, easy configuration, and fl
 
 
 <p align="center">
-  <a href="https://dashboard.heroku.com/" target="_blank">
+  <a href="https://github.com/mnyandwa1/MNYANDWA-MD#main" target="_blank">
     <img src="https://img.shields.io/badge/DEPLOY_ON_HEROKU-7952B3?style=for-the-badge&logo=heroku&logoColor=white" width="200">
   </a>
   <a href="https://render.com/" target="_blank">
