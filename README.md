@@ -23,11 +23,10 @@ Enjoy a simple bot experience with powerful features, easy configuration, and fl
 
 ---
 
-📌 How to Connect MNYANDWA-MD
+
 
 🔑 Step 1: Get Your Session ID
 
-Generate your WhatsApp session ID using the button below.
 
 <p align="center">
   <a href="https://bony-xmd-sension-generator.onrender.com/" target="_blank">
@@ -35,10 +34,10 @@ Generate your WhatsApp session ID using the button below.
   </a>
 </p>Important: Use a trusted session generator and never share your session credentials with anyone. Replace the link above with the official MNYANDWA-MD session generator when available.
 
+----
 
 🍴 Step 2: Fork the Repository
 
-Fork the MNYANDWA-MD repository to your GitHub account.
 
 <p align="center">
   <a href="https://github.com/" target="_blank">
@@ -46,9 +45,10 @@ Fork the MNYANDWA-MD repository to your GitHub account.
   </a>
 </p>Replace the link above with your MNYANDWA-MD GitHub repository.
 
+-----
+
 🚀 Step 3: Deploy Your Bot
 
-Choose a hosting platform compatible with your project.
 
 <p align="center">
   <a href="https://dashboard.heroku.com/" target="_blank">
